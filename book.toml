@@ -1,0 +1,15 @@
+[book]
+authors = ["shihyu", "codex"]
+language = "zh-TW"
+multilingual = false
+src = "src"
+title = "工程師等級 Web3 系統全圖（完整版）"
+
+[build]
+build-dir = "book"
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+mathjax-support = true
+copy-fonts = true
