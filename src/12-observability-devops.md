@@ -1,37 +1,599 @@
 # 12. 監控、SRE 與工程交付
 
 ## 12.1 可觀測性指標
-- 鏈高度差（本地 vs 參考）
-- RPC 成功率與延遲分位數
-- 交易狀態轉換耗時
-- 失敗率（revert/drop/replaced）
-- 錢包餘額與授權變化
+
+可觀測性（Observability）在 Web3 的語境下，不只是「伺服器有沒有活著」，而是「鏈上狀態轉移是否正常、資產是否安全、交易是否如期完成」。傳統的 Web2 監控關注 CPU、記憶體、請求延遲；Web3 的監控則需要同時追蹤鏈上和鏈下兩個維度的指標。
+
+可觀測性的三大支柱——Metrics（指標）、Logs（日誌）、Traces（追蹤）——在 Web3 中同樣適用，但需要針對區塊鏈的特性進行調整和擴展。
+
+```text
+                    Web3 可觀測性架構
+┌─────────────────────────────────────────────────────┐
+│                                                     │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐          │
+│  │ Metrics  │  │  Logs    │  │ Traces   │          │
+│  │ 數值指標  │  │  事件日誌 │  │ 交易追蹤  │          │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘          │
+│       │             │             │                 │
+│       v             v             v                 │
+│  ┌──────────────────────────────────────┐           │
+│  │        Prometheus / Grafana          │           │
+│  │    + ELK Stack / Loki               │           │
+│  │    + Jaeger / 自建 tx tracer        │           │
+│  └──────────────────────────────────────┘           │
+│       │                                             │
+│       v                                             │
+│  ┌──────────────────────────────────────┐           │
+│  │        告警引擎（Alertmanager）       │           │
+│  │    P0: PagerDuty 電話               │           │
+│  │    P1: Slack/Telegram               │           │
+│  │    P2: Email/Dashboard              │           │
+│  └──────────────────────────────────────┘           │
+└─────────────────────────────────────────────────────┘
+```
+
+以下是 Web3 環境中必須監控的核心指標。
+
+**鏈高度差（本地 vs 參考）**
+
+鏈高度差（Block Height Lag）是衡量本地節點是否與網路同步的最基本指標。如果本地節點的區塊高度落後參考節點超過一定數量（例如 10 個區塊），說明節點可能正在同步、網路連線中斷、或磁碟 I/O 瓶頸。落後的節點會回傳過時的狀態，導致交易基於舊資訊構建，可能被 revert 或錯過時間敏感的操作。
+
+建議同時從多個獨立的參考來源取得最新區塊高度（例如 Etherscan API、Alchemy、Infura），避免單一來源的誤報。差值超過 5 個區塊時觸發 P1 告警，超過 50 個區塊時觸發 P0 告警。
+
+```python
+# Prometheus 指標匯出範例（Python）
+from prometheus_client import Gauge
+
+block_height_local = Gauge(
+    'block_height_local',
+    'Local node block height'
+)
+block_height_reference = Gauge(
+    'block_height_reference',
+    'Reference block height from external source'
+)
+block_height_lag = Gauge(
+    'block_height_lag',
+    'Difference between reference and local block height'
+)
+
+def update_block_metrics():
+    local = get_local_block_number()
+    reference = get_reference_block_number()
+    block_height_local.set(local)
+    block_height_reference.set(reference)
+    block_height_lag.set(reference - local)
+```
+
+**RPC 成功率與延遲分位數**
+
+RPC 端點是應用與區塊鏈互動的門戶，其可用性和效能直接影響整個系統的運作。需要監控的指標包括：
+
+- **成功率**：每分鐘/每五分鐘的 RPC 呼叫成功率。低於 99.5% 應觸發告警。
+- **延遲分位數**：P50（中位數）、P90、P95、P99 的回應時間。P99 延遲超過 2 秒應觸發告警，因為這暗示尾部延遲可能影響時間敏感的操作。
+- **按方法分類**：不同的 RPC 方法（`eth_call`、`eth_sendRawTransaction`、`eth_getBalance`）的效能差異很大，應該分別監控。
+- **按提供者分類**：如果使用多個 RPC 提供者（Alchemy、Infura、QuickNode），分別追蹤每個提供者的效能，以便在某個提供者降級時快速切換。
+
+```yaml
+# Grafana 告警規則範例（PromQL）
+groups:
+  - name: rpc_alerts
+    rules:
+      - alert: RPCHighErrorRate
+        expr: |
+          rate(rpc_requests_total{status="error"}[5m])
+          / rate(rpc_requests_total[5m]) > 0.005
+        for: 2m
+        labels:
+          severity: P1
+        annotations:
+          summary: "RPC error rate > 0.5%"
+
+      - alert: RPCHighLatency
+        expr: |
+          histogram_quantile(0.99,
+            rate(rpc_duration_seconds_bucket[5m])
+          ) > 2.0
+        for: 5m
+        labels:
+          severity: P1
+        annotations:
+          summary: "RPC P99 latency > 2s"
+```
+
+**交易狀態轉換耗時**
+
+交易從被提交到被確認的全程追蹤。一筆交易通常會經歷以下狀態：`Created -> Signed -> Submitted -> Pending -> Mined -> Confirmed`。需要監控每個狀態之間的轉換時間，以及卡在某個狀態超時的交易數量。
+
+交易卡在 `Pending` 狀態是最常見的問題，原因包括：gas price 設定過低、nonce 衝突（前面的交易還沒完成）、RPC 端點沒有正確廣播交易。自動化系統應該能偵測到卡住的交易，並根據策略進行加速（Replace-by-Fee）或取消。
+
+```text
+交易生命週期追蹤：
+
+  Created ──> Signed ──> Submitted ──> Pending ──> Mined ──> Confirmed
+    │           │           │            │           │          │
+    t0          t1          t2           t3          t4         t5
+    │           │           │            │           │          │
+    │<─簽名耗時─>│<─提交耗時─>│<──mempool──>│<─確認延遲─>│
+    │                                                          │
+    └──────────────── 全程耗時（SLA 目標）─────────────────────┘
+
+  監控重點：
+  - t2 - t0 > 30s  : 簽名或提交流程異常
+  - t4 - t2 > 5min : 交易可能卡住，考慮加速
+  - t5 - t4 > 30min: 確認數不足，可能存在 reorg 風險
+```
+
+**失敗率（revert/drop/replaced）**
+
+交易失敗有多種型態，每種需要不同的處理方式：
+
+- **Revert**：交易被區塊鏈執行但失敗（例如 `require()` 條件不滿足）。雖然交易失敗了，但仍然消耗了 gas。高 revert 率暗示呼叫端的參數驗證或狀態檢查不充分。
+- **Drop**：交易在 mempool 中被丟棄，通常是因為 gas price 過低或 mempool 擁塞。被丟棄的交易不消耗 gas，但會延遲業務流程。
+- **Replaced**：交易被同一 nonce 的新交易取代（Replace-by-Fee）。這通常是自動化加速機制的正常行為，但如果 replacement 頻率過高，說明 gas 估算策略需要優化。
+
+建議追蹤每個類型的失敗率，分別設定告警閾值。Revert 率超過 1% 應觸發 P1 告警；非預期的 drop 或 replacement 應立即調查。
+
+**錢包餘額與授權變化**
+
+錢包餘額的監控是資金安全的最後一道防線。需要監控的項目包括：
+
+- **原生幣餘額**（ETH、MATIC 等）：Hot Wallet 的 gas 帳戶餘額低於閾值時需要自動補充
+- **ERC-20 Token 餘額**：異常的餘額變化（非預期的大額轉出）需要立即告警
+- **授權額度變化**（ERC-20 approval）：監測 `Approval` 事件，特別是授權給未知地址或授權額度為 `type(uint256).max` 的操作
+- **NFT 持有變化**：監測 ERC-721/1155 的轉移事件
+
+```python
+# 錢包餘額監控腳本範例
+import time
+from web3 import Web3
+
+WATCHED_WALLETS = {
+    "hot_wallet": "0x...",
+    "ops_treasury": "0x...",
+    "root_treasury": "0x...",
+}
+
+THRESHOLDS = {
+    "hot_wallet": {
+        "eth_min": Web3.to_wei(1, "ether"),
+        "max_change_pct": 20,  # 單次變動超過 20% 告警
+    },
+    "ops_treasury": {
+        "eth_min": Web3.to_wei(10, "ether"),
+        "max_change_pct": 10,
+    },
+    "root_treasury": {
+        "eth_min": Web3.to_wei(100, "ether"),
+        "max_change_pct": 5,
+    },
+}
+
+def check_balances(w3):
+    for name, address in WATCHED_WALLETS.items():
+        balance = w3.eth.get_balance(address)
+        threshold = THRESHOLDS[name]
+
+        if balance < threshold["eth_min"]:
+            alert(f"P1: {name} balance low: {balance}")
+
+        change_pct = calculate_change_pct(name, balance)
+        if abs(change_pct) > threshold["max_change_pct"]:
+            alert(f"P0: {name} balance changed {change_pct}%")
+```
 
 ## 12.2 告警分級
-- P0: 資金異常、私鑰疑似外洩、跨鏈異常大額
-- P1: 交易卡 pending、節點脫節、預言機偏差
-- P2: 延遲上升、索引落後
+
+告警分級的核心原則是「不同嚴重程度的事件需要不同的回應速度和回應方式」。過度告警（alert fatigue）是 SRE 最大的敵人——如果每個告警都是 P0，那就等於沒有告警分級。
+
+**P0: 立即回應（5 分鐘內）**
+
+P0 是最高嚴重等級的告警，代表「正在發生或即將發生資金損失」。P0 告警應該觸發電話叫醒（PagerDuty）和所有核心團隊成員的通知。收到 P0 告警的 on-call 工程師必須在 5 分鐘內確認並開始處理。
+
+P0 場景包括：
+- 資金異常：合約餘額在短時間內大幅下降、異常大額轉出
+- 私鑰疑似外洩：多簽簽名人報告未授權的簽名活動
+- 跨鏈異常大額：橋接交易金額異常或橋接合約餘額急劇變化
+- 合約被暫停但非預期：有人觸發了暫停但不是計畫內的操作
+
+```text
+P0 告警回應流程：
+
+  告警觸發 ──> PagerDuty 電話 ──> 5min 內確認
+       │
+       v
+  確認事故 ──> 判斷是否需要暫停
+       │                │
+       │ 是              │ 否
+       v                v
+  觸發 Pause ──>  繼續調查
+       │
+       v
+  通知核心團隊 + 安全合作夥伴
+       │
+       v
+  持續更新狀態（每 30 分鐘）
+```
+
+**P1: 緊急回應（30 分鐘內）**
+
+P1 告警代表「系統功能受損但尚未造成資金損失」。P1 告警透過 Slack/Telegram 通知，on-call 工程師需要在 30 分鐘內開始處理。
+
+P1 場景包括：
+- 交易卡 pending：批量交易長時間未被確認，影響業務流程
+- 節點脫節：本地節點與網路的區塊高度差持續擴大
+- 預言機偏差：預言機回報的價格與市場價格的偏差超過閾值（例如 2%）
+- RPC 可用性下降：主要 RPC 端點的成功率降至 95% 以下
+
+**P2: 常規回應（工作時間內處理）**
+
+P2 告警代表「需要關注但不緊急的問題」。P2 告警記錄到 dashboard 和 email，在下一個工作日內處理。
+
+P2 場景包括：
+- 延遲上升：RPC 延遲 P99 升高但仍在可接受範圍內
+- 索引落後：The Graph 子圖或自建索引器落後數個區塊
+- gas price 持續偏高：可能影響營運成本
+- 即將到期的憑證或域名
+
+**告警分級決策矩陣：**
+
+| 判斷維度 | P0 | P1 | P2 |
+|---------|-----|-----|-----|
+| 資金風險 | 正在損失或即將損失 | 潛在風險但可控 | 無直接風險 |
+| 影響範圍 | 全部用戶 | 部分功能 | 效能/體驗 |
+| 回應時間 | 5 分鐘 | 30 分鐘 | 工作時間 |
+| 通知方式 | 電話 + 全員 | Slack + on-call | Email + Dashboard |
+| 升級規則 | 15min 無回應自動升級到管理層 | 2hr 無回應升級到 P0 | 24hr 無人處理升級到 P1 |
+
+**防止告警疲勞的最佳實踐：**
+- 每月檢視告警數據，刪除從未觸發或觸發但無需行動的告警
+- 對頻繁觸發的低嚴重度告警進行根因修復，而非調高閾值
+- 設定告警靜默規則（silencing）：已知的計畫性維護期間靜默相關告警
+- 每個告警必須附帶 Runbook 連結，告訴收到告警的人下一步該做什麼
 
 ## 12.3 發版流程
-1. 測試網部署與回歸
-2. Mainnet fork 模擬
-3. 審批與變更窗口
-4. 小流量灰度
-5. 全量啟用
-6. 觀察期與回滾預案
+
+區塊鏈上的合約部署不像傳統軟體可以隨時回滾。一旦合約上鏈，它的程式碼就是永久性的（除非使用 proxy pattern 進行升級）。因此，發版流程必須格外嚴謹。
+
+**1. 測試網部署與回歸**
+
+所有新版本必須先在測試網（Sepolia、Goerli、Mumbai 等）上完整部署並進行回歸測試。測試網部署不只是「合約能不能部署成功」，而是要完整地測試整個工作流程：部署、初始化、參數設定、權限配置、和關鍵操作的端對端流程。
+
+測試網環境應該盡可能模擬主網的配置，包括多簽設定、timelock 參數、和預言機整合。使用自動化腳本（如 Foundry 的 `forge script`）進行部署，確保部署流程可重複、可審計。
+
+```bash
+# Foundry 部署腳本範例
+forge script script/Deploy.s.sol:DeployScript \
+  --rpc-url $SEPOLIA_RPC \
+  --broadcast \
+  --verify \
+  --etherscan-api-key $ETHERSCAN_KEY \
+  -vvvv
+
+# 部署後自動化驗證
+forge script script/Verify.s.sol:VerifyScript \
+  --rpc-url $SEPOLIA_RPC \
+  --sig "run(address)" $DEPLOYED_ADDRESS
+```
+
+**2. Mainnet Fork 模擬**
+
+在真正部署到主網之前，使用主網分叉在本地模擬部署的完整效果。這可以發現只在真實主網狀態下才會出現的問題，例如：與已部署合約的互動、真實的流動性環境、gas 消耗估算等。
+
+```bash
+# 主網分叉模擬部署
+forge script script/Deploy.s.sol:DeployScript \
+  --fork-url $ETH_MAINNET_RPC \
+  --fork-block-number $(cast block-number --rpc-url $ETH_MAINNET_RPC) \
+  -vvvv
+
+# 在分叉環境中執行整合測試
+forge test --fork-url $ETH_MAINNET_RPC -vvv --match-contract Integration
+```
+
+**3. 審批與變更窗口**
+
+每次主網部署都需要正式的審批流程。審批文件應該包含：變更說明、影響範圍、回滾方案、測試結果（包含測試網和主網分叉的結果）、審計報告（如適用）。
+
+變更窗口應該選擇在團隊精力最好的工作日白天進行，避免週五下午（避免週末出問題時人力不足）。部署前需要確認 on-call 工程師已準備就緒，監控 dashboard 已打開。
+
+**4. 小流量灰度**
+
+對於可灰度發布的系統（例如後端服務、索引器），先以小流量（5-10%）運行新版本。觀察關鍵指標（成功率、延遲、error rate）是否正常後，再逐步擴大到全量。
+
+對於合約升級，「灰度」的概念體現在：先在一個小型的測試市場或低 TVL 的池中進行升級，觀察一段時間後再升級核心市場。
+
+**5. 全量啟用**
+
+灰度驗證通過後，將新版本推廣到所有流量。全量啟用後，需要保持高度關注至少 24 小時。
+
+**6. 觀察期與回滾預案**
+
+全量啟用後進入觀察期（通常 24-72 小時）。觀察期內，任何異常指標都應該立即觸發調查。對於合約升級，觀察期需要更長（1-2 週），因為某些問題可能在特定市場條件下才會顯現。
+
+回滾預案必須在部署前就準備好，包括：proxy pattern 的回滾腳本、參數回調的 multisig 交易、以及服務降級方案。
+
+```text
+發版流程全景：
+
+  ┌────────────┐     ┌──────────────┐     ┌───────────────┐
+  │ 1.測試網    │────>│ 2.主網分叉    │────>│ 3.審批+變更窗口│
+  │ 部署+回歸   │     │ 模擬部署      │     │ 正式審批文件   │
+  └────────────┘     └──────────────┘     └───────┬───────┘
+                                                   │
+  ┌────────────┐     ┌──────────────┐     ┌───────▼───────┐
+  │ 6.觀察期    │<────│ 5.全量啟用    │<────│ 4.小流量灰度  │
+  │ +回滾預案   │     │              │     │ 5-10% 流量    │
+  └────────────┘     └──────────────┘     └───────────────┘
+
+  每個階段的 Gate（門檻）：
+  1->2: 測試網所有測試通過
+  2->3: 主網分叉模擬無異常
+  3->4: 審批通過 + on-call 就緒
+  4->5: 灰度指標正常 ≥ 4 小時
+  5->6: 全量後指標正常 ≥ 1 小時
+```
 
 ## 12.4 Runbook 基本模板
-- 觸發條件
-- 立即止血動作
-- 升級路徑
-- 回復步驟
-- 對外溝通與法遵
+
+Runbook 是事故回應的標準操作程序（SOP），它的存在是為了讓任何收到告警的工程師——即使不是最熟悉該系統的人——都能快速地執行正確的止血動作。好的 Runbook 不需要工程師思考「接下來該做什麼」，而是直接告訴他「執行這些步驟」。
+
+**觸發條件**
+
+明確定義什麼情況下應該使用這份 Runbook。觸發條件應該與告警規則完全對應，讓收到告警的人可以立即找到對應的 Runbook。避免模糊的觸發條件（如「系統異常時」），而應該使用具體的指標和閾值（如「合約 ETH 餘額在 5 分鐘內下降超過 10%」）。
+
+**立即止血動作**
+
+止血動作是 Runbook 最重要的部分。它應該是一系列可以直接複製貼上執行的指令，不需要工程師自己判斷或構造。在壓力之下，人的判斷力會下降，所以預先準備好的指令比臨場決策更可靠。
+
+```bash
+# Runbook 範例：合約餘額異常下降
+# 觸發條件：合約 ETH 餘額在 5 分鐘內下降超過 10%
+
+## 步驟 1：確認異常（1 分鐘）
+# 查看合約當前餘額
+cast balance $CONTRACT_ADDRESS --rpc-url $RPC_URL
+
+# 查看最近的轉出交易
+cast logs --from-block $RECENT_BLOCK \
+  --address $CONTRACT_ADDRESS \
+  "Transfer(address,address,uint256)" \
+  --rpc-url $RPC_URL
+
+## 步驟 2：止血（2 分鐘）
+# 如果確認為非授權轉出，立即暫停合約
+# 使用 Pause Guardian 多簽（需要 1-of-N 簽名）
+cast send $CONTRACT_ADDRESS "pause()" \
+  --private-key $GUARDIAN_KEY \
+  --rpc-url $RPC_URL
+
+## 步驟 3：通知（5 分鐘）
+# 在 #security-incidents Slack 頻道通知核心團隊
+# 聯繫安全合作夥伴
+# 記錄事故開始時間和初步觀察
+```
+
+**升級路徑**
+
+定義什麼情況下需要升級事故等級，以及如何升級。
+
+| 升級條件 | 動作 |
+|---------|------|
+| 5 分鐘無法確認事故性質 | 叫醒第二位 on-call |
+| 確認為安全攻擊 | 升級到 P0 + 通知全部核心團隊 |
+| 損失超過 $100K | 通知管理層 + 法務 |
+| 損失超過 $1M | 啟動外部安全公司協助 |
+
+**回復步驟**
+
+事故結束後的恢復流程，包括如何安全地解除暫停、如何驗證系統恢復正常、以及如何進行事後審計。回復步驟比止血更需要謹慎——在攻擊者可能仍在監視系統的情況下，貿然解除暫停可能導致第二波攻擊。
+
+**對外溝通與法遵**
+
+定義在不同嚴重等級下，對外溝通的時間要求和內容模板。例如：P0 事故需要在 1 小時內發布初步聲明；確認損失後需要在 24 小時內提供詳細報告。溝通內容需要法務審核，避免在事實尚未完全確認的情況下做出承諾。
+
+```text
+Runbook 模板結構：
+
+  ┌─────────────────────────────────────────────┐
+  │ Runbook: [告警名稱]                          │
+  │ 最後更新: YYYY-MM-DD                         │
+  │ 負責團隊: [團隊名稱]                         │
+  ├─────────────────────────────────────────────┤
+  │ 1. 觸發條件                                  │
+  │    - 告警名稱和對應的 Grafana dashboard 連結  │
+  │    - 具體的指標閾值                           │
+  ├─────────────────────────────────────────────┤
+  │ 2. 止血動作（可複製貼上的指令）               │
+  │    - 步驟 1: 確認（≤1min）                   │
+  │    - 步驟 2: 止血（≤5min）                   │
+  │    - 步驟 3: 通知（≤10min）                  │
+  ├─────────────────────────────────────────────┤
+  │ 3. 升級路徑                                  │
+  │    - 條件 -> 動作                            │
+  ├─────────────────────────────────────────────┤
+  │ 4. 回復步驟                                  │
+  │    - 前提條件（確認攻擊已停止）               │
+  │    - 恢復指令                                │
+  │    - 驗證步驟                                │
+  ├─────────────────────────────────────────────┤
+  │ 5. 溝通模板                                  │
+  │    - 內部通知模板                             │
+  │    - 對外聲明模板                             │
+  │    - 法務聯繫人                               │
+  └─────────────────────────────────────────────┘
+```
+
+**Runbook 維護的最佳實踐：**
+- 每次事故後更新相關的 Runbook
+- 每季進行 Runbook 演練（dry run），確認指令仍然有效
+- Runbook 不要太長，一份 Runbook 控制在 2 頁以內
+- 所有 Runbook 存放在統一的位置（如 Notion、Confluence、或 Git repo），並確保 on-call 工程師能快速存取
 
 ## 12.5 事件追蹤資料
-- tx hash / block number
-- signer id / policy id
-- simulation result hash
-- before/after balance snapshot
 
-## 白話說明
-Web3 SRE 的核心不是「伺服器活著」，而是「資產與狀態轉移可控、可追蹤、可回應」。
+完整的事件追蹤資料（Audit Trail）是事故分析和合規審計的基礎。區塊鏈天生提供了不可篡改的交易記錄，但這不代表不需要額外的追蹤——鏈上記錄缺乏足夠的上下文資訊（例如「為什麼」執行這筆交易、「誰」批准的、模擬結果是什麼），這些都需要鏈下的追蹤系統補充。
+
+**tx hash / block number**
+
+每筆鏈上交易的 tx hash 和所在的 block number 是最基礎的追蹤資料。tx hash 是全域唯一的，可以用來在區塊鏈瀏覽器（如 Etherscan）上查詢交易的完整細節。block number 提供了時間維度的資訊，也用於定位特定時間點的鏈上狀態。
+
+建議在內部系統中建立交易索引，將 tx hash 與業務操作（如「補充 Hot Wallet」、「執行清算」）關聯起來。這在事故調查時可以快速定位相關交易。
+
+**signer id / policy id**
+
+記錄每筆交易的簽署人身份和適用的政策。在多簽系統中，需要記錄哪些簽名人參與了簽署、使用了哪一組多簽、以及交易是基於哪個政策規則被批准的（例如「日常營運 2/3」或「緊急止血 2/5」）。
+
+這些資訊對於事後審計至關重要：如果發現一筆可疑交易，可以立即追溯到具體的簽署人和審批流程。
+
+**simulation result hash**
+
+在交易簽署前，應該記錄模擬結果的 hash。模擬結果包括：預期的狀態變更、預期的事件日誌、預期的 gas 消耗。將模擬結果 hash 化後存儲，可以在事後驗證「簽署時看到的模擬結果」和「實際執行結果」是否一致。如果不一致，說明交易簽署時的鏈上狀態與實際執行時不同，可能存在 MEV 攻擊或 frontrunning。
+
+**before/after balance snapshot**
+
+每筆關鍵交易前後的餘額快照。不只是合約本身的餘額，還包括所有相關地址（用戶、金庫、手續費收取地址等）的餘額。這為財務對帳提供了可驗證的數據來源。
+
+```text
+完整的事件追蹤記錄結構：
+
+  ┌──────────────────────────────────────────────────┐
+  │ Event Record                                      │
+  ├──────────────────────────────────────────────────┤
+  │ tx_hash:      0xabc...def                         │
+  │ block_number: 19,000,123                          │
+  │ timestamp:    2024-03-15T10:30:00Z                │
+  │ chain_id:     1 (Ethereum Mainnet)                │
+  ├──────────────────────────────────────────────────┤
+  │ signer_ids:   [signer_A, signer_B, signer_C]     │
+  │ policy_id:    ops_treasury_2of3                   │
+  │ approval_ticket: JIRA-1234                        │
+  ├──────────────────────────────────────────────────┤
+  │ simulation_hash:  0x123...789                     │
+  │ simulation_tool:  Tenderly v2.1                   │
+  │ simulation_block: 19,000,120                      │
+  ├──────────────────────────────────────────────────┤
+  │ before_balance:                                   │
+  │   contract:  1,000.00 USDC                        │
+  │   recipient:     0.00 USDC                        │
+  │ after_balance:                                    │
+  │   contract:    900.00 USDC                        │
+  │   recipient:   100.00 USDC                        │
+  ├──────────────────────────────────────────────────┤
+  │ actual_vs_simulated: MATCH ✓                      │
+  │ notes: "Monthly ops budget transfer to team"      │
+  └──────────────────────────────────────────────────┘
+```
+
+**追蹤資料的儲存與查詢**
+
+追蹤資料應該存放在不可篡改或至少有完整審計日誌的儲存系統中。可以使用：
+- **IPFS/Arweave**：將關鍵的追蹤記錄上傳到去中心化儲存，確保不可篡改
+- **Append-only Database**：使用只允許新增不允許修改或刪除的資料庫（如 Amazon QLDB）
+- **Git Repository**：將追蹤記錄提交到專用的 Git repo，利用 Git 的版本歷史作為審計軌跡
+
+查詢方面，建議建立以下索引：
+- 按時間範圍查詢所有交易
+- 按簽署人查詢其參與的所有交易
+- 按合約/地址查詢相關的所有操作
+- 按政策/規則查詢適用該政策的所有交易
+
+## 12.6 基礎設施即程式碼
+
+Web3 基礎設施的管理應該遵循 Infrastructure as Code（IaC）的原則，使用 Terraform、Pulumi 或 Ansible 等工具管理節點、RPC 端點、和監控基礎設施。手動配置的環境難以重現、難以審計、也難以在緊急情況下快速擴展。
+
+```text
+Web3 基礎設施架構：
+
+  ┌──────────────────────────────────────────────────┐
+  │                    Load Balancer                   │
+  │                 (Nginx / CloudFlare)               │
+  └─────────────┬──────────────┬───────────────────────┘
+                │              │
+  ┌─────────────▼──┐  ┌───────▼─────────┐
+  │  RPC 節點叢集   │  │  後端服務叢集     │
+  │  ┌────┐ ┌────┐ │  │  ┌────┐ ┌────┐  │
+  │  │Geth│ │Geth│ │  │  │ API│ │ API│  │
+  │  │ #1 │ │ #2 │ │  │  │ #1 │ │ #2 │  │
+  │  └────┘ └────┘ │  │  └────┘ └────┘  │
+  └────────────────┘  └─────────────────┘
+         │                     │
+         v                     v
+  ┌──────────────┐    ┌──────────────┐
+  │ 備援 RPC     │    │  資料庫       │
+  │ (Alchemy/    │    │ (PostgreSQL  │
+  │  Infura)     │    │  + Redis)    │
+  └──────────────┘    └──────────────┘
+```
+
+**節點管理最佳實踐：**
+- 至少運行兩個獨立的全節點，互為備援
+- 同時接入第三方 RPC 服務（Alchemy、Infura）作為 fallback
+- 監控節點的磁碟使用率——全節點的儲存需求持續增長，需要定期擴容或啟用 pruning
+- 設定自動重啟和健康檢查腳本
+
+**CI/CD 管道與合約部署：**
+
+合約部署不應該是手動操作，而是透過 CI/CD 管道自動化。管道應該包含：編譯、測試、靜態分析、部署到測試網、自動化驗證。只有所有步驟都通過後，才允許人工批准並部署到主網。
+
+```yaml
+# GitHub Actions 合約 CI/CD 範例
+name: Contract CI/CD
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Build
+        run: forge build --sizes
+
+      - name: Unit Tests
+        run: forge test -vvv
+
+      - name: Invariant Tests
+        run: forge test --match-contract Invariant -vvv
+
+      - name: Slither Analysis
+        uses: crytic/slither-action@v0.3.0
+
+      - name: Gas Report
+        run: forge test --gas-report
+
+  deploy-testnet:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Sepolia
+        run: |
+          forge script script/Deploy.s.sol \
+            --rpc-url $SEPOLIA_RPC \
+            --broadcast \
+            --verify
+
+      - name: Post-deploy Verification
+        run: |
+          forge script script/Verify.s.sol \
+            --rpc-url $SEPOLIA_RPC
+```
+
+## 白話總結
+
+Web3 SRE 的核心不是「伺服器活著」，而是「資產與狀態轉移可控、可追蹤、可回應」。在傳統的 Web2 世界裡，最壞的情況是服務中斷用戶暫時無法使用；但在 Web3 中，最壞的情況是資金被盜且無法逆轉。這個根本差異決定了 Web3 監控和運維的一切設計決策。
+
+可觀測性的重點不是監控越多越好，而是監控對的東西。區塊鏈高度差告訴你節點是否跟上了；RPC 延遲告訴你系統是否能及時回應；交易失敗率告訴你業務流程是否正常；錢包餘額變化則是資金安全的最直接信號。這四類指標構成了 Web3 可觀測性的基礎。
+
+告警分級是為了確保真正緊急的事情能得到立即回應，而不是讓工程師被大量無關緊要的告警淹沒。P0 是「打電話叫醒人」的等級，只用於資金正在流失的場景；P1 是「發 Slack 訊息」的等級，用於系統功能受損但還沒到資金損失的程度；P2 是「記到 dashboard」的等級，工作時間處理就好。
+
+發版流程在 Web3 中特別重要，因為合約一旦上鏈就是永久的。每次部署都要經過測試網驗證、主網分叉模擬、正式審批、灰度發布、觀察期這完整的流程。這聽起來很慢，但比起部署了有問題的合約損失數百萬美元，多花幾天做驗證是非常划算的。
+
+Runbook 的價值在於讓團隊在壓力最大的時候不需要思考下一步該做什麼，而是按照預先寫好的步驟執行。好的 Runbook 應該具體到可以直接複製貼上指令，不需要工程師臨場判斷。每次事故後更新 Runbook、每季演練一次，才能確保 Runbook 在真正需要時是有效的。
+
+完整的事件追蹤記錄讓每一筆操作都有跡可循：誰發起的、誰批准的、模擬結果是什麼、實際執行結果是什麼。這些資料不只在事故調查時有用，在合規審計、財務對帳、和團隊覆盤時都是不可或缺的。
