@@ -189,6 +189,31 @@
 <li>開放標準（ERC）</li>
 </ul>
 <p>工程定位：適合快速組合 DeFi/NFT/治理應用。</p>
+<p>以太坊由 Vitalik Buterin 於 2013 年提出，2015 年正式上線。它的核心創新在於將區塊鏈從「分散式帳本」擴展為「分散式狀態機」。比特幣只能記錄「誰有多少錢」，而以太坊可以記錄任意狀態——合約的變數、NFT 的所有權、DAO 的投票結果、DeFi 協議的借貸關係。這個抽象層級的提升，使得區塊鏈從單一的支付用途擴展到了幾乎無限的應用場景。</p>
+<p>EVM（Ethereum Virtual Machine）是以太坊的核心執行引擎。它是一個基於堆疊的虛擬機，所有節點執行相同的位元組碼，確保狀態轉換的確定性。EVM 的設計有幾個關鍵特點：(1) 完全沙箱化——合約無法存取檔案系統或網路；(2) 確定性——相同輸入永遠產生相同輸出（不允許浮點數、隨機數等非確定性操作）；(3) 可計量——每個操作都有明確的 Gas 消耗。</p>
+<pre><code class="language-text">以太坊架構概覽：
+
+┌─────────────────────────────────────────────┐
+│                  使用者/DApp                    │
+└──────────────────────┬──────────────────────┘
+                       │ JSON-RPC
+┌──────────────────────v──────────────────────┐
+│              以太坊節點 (Geth/Reth)            │
+├─────────────────────────────────────────────┤
+│  ┌─────────┐  ┌──────────┐  ┌────────────┐ │
+│  │ 交易池   │  │ EVM 執行  │  │ 共識引擎    │ │
+│  │ (Mempool)│  │  Engine   │  │(Beacon)    │ │
+│  └────┬────┘  └─────┬────┘  └─────┬──────┘ │
+│       │             │             │         │
+│  ┌────v─────────────v─────────────v──────┐  │
+│  │           State Database               │  │
+│  │  (LevelDB / PebbleDB / MDBX)          │  │
+│  └────────────────────────────────────────┘  │
+├─────────────────────────────────────────────┤
+│              P2P Network (devp2p)            │
+└─────────────────────────────────────────────┘
+</code></pre>
+<p>Gas 機制是以太坊防止 DoS 攻擊和資源濫用的核心設計。每個 EVM 操作碼都有固定的 Gas 消耗——ADD 花 3 Gas，SSTORE（寫入存儲）花 20000 Gas，創建合約花至少 32000 Gas。使用者在發送交易時指定 Gas Limit（最多願意消耗的 Gas）和 Gas Price（每單位 Gas 的價格）。如果執行過程中 Gas 耗盡，交易失敗但手續費不退。這個設計確保了即使合約有無限迴圈，也不會讓網路癱瘓。</p>
 <h3 id="512-智能合約-p0"><a class="header" href="#512-智能合約-p0">5.1.2 智能合約 <code>P0</code></a></h3>
 <p>智能合約是鏈上狀態機：</p>
 <ul>
@@ -196,12 +221,61 @@
 <li>轉移函數（function）</li>
 <li>外部觀測（event）</li>
 </ul>
+<p>智能合約的概念最早由 Nick Szabo 在 1994 年提出，但直到以太坊才真正實現。你可以把智能合約理解為「住在區塊鏈上的程式」——它有自己的地址、餘額和存儲空間，一旦部署就永久存在於鏈上，任何人都可以按照預定的規則與它互動。</p>
+<pre><code class="language-text">智能合約狀態機模型：
+
+┌─────────────────────────────┐
+│      Smart Contract          │
+│                              │
+│  State (Storage):            │
+│  ┌─────────────────────┐    │
+│  │ owner: 0xABC...     │    │
+│  │ balance: 1000 USDC  │    │
+│  │ totalSupply: 10000  │    │
+│  └─────────────────────┘    │
+│                              │
+│  Functions:                  │
+│  ┌─────────────────────┐    │
+│  │ transfer(to, amount)│───&gt;│ 修改 state
+│  │ approve(spender)    │───&gt;│ 修改 state
+│  │ balanceOf(addr)     │───&gt;│ 只讀 (view)
+│  └─────────────────────┘    │
+│                              │
+│  Events:                     │
+│  ┌─────────────────────┐    │
+│  │ Transfer(from,to,v) │───&gt;│ 寫入 log（不佔 storage）
+│  │ Approval(owner,sp)  │    │
+│  └─────────────────────┘    │
+└─────────────────────────────┘
+</code></pre>
+<p>以 Solidity 為例，一個簡單的代幣合約展示了智能合約的核心結構：</p>
+<pre><code class="language-solidity">// 簡化的 ERC-20 代幣合約
+contract SimpleToken {
+    // State（存儲在鏈上）
+    mapping(address =&gt; uint256) public balances;
+    uint256 public totalSupply;
+
+    // Event（鏈上日誌，供外部系統索引）
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+    // Function（狀態轉移函數）
+    function transfer(address to, uint256 amount) external {
+        require(balances[msg.sender] &gt;= amount, "Insufficient balance");
+        balances[msg.sender] -= amount;
+        balances[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+    }
+}
+</code></pre>
 <p>風險面：</p>
 <ul>
 <li>不可逆部署</li>
 <li>外部調用風險</li>
 <li>升級與權限治理</li>
 </ul>
+<p><strong>不可逆部署</strong>意味著合約一旦上鏈就無法修改。如果合約存在 bug，唯一的「修復」方式是部署新合約並遷移狀態。2016 年的 The DAO 事件就是最著名的案例——一個遞迴調用漏洞導致 360 萬 ETH（當時約 5000 萬美元）被盜，最終社群不得不透過硬分叉來回滾交易，這直接導致了以太坊（ETH）和以太坊經典（ETC）的分裂。</p>
+<p><strong>外部調用風險</strong>是智能合約安全中最常見的問題。Reentrancy（重入攻擊）就是典型例子：合約 A 在轉帳給合約 B 時，B 的 fallback 函數可以在 A 更新狀態之前再次調用 A 的提款函數。防禦方式包括：(1) Check-Effects-Interactions 模式——先檢查條件、更新狀態、最後才做外部調用；(2) 使用 ReentrancyGuard 鎖；(3) 使用 pull 而非 push 模式進行轉帳。</p>
+<p><strong>升級模式</strong>是現代合約開發的必備知識。常見的升級模式有 Proxy Pattern（透明代理、UUPS）和 Diamond Pattern（EIP-2535）。代理模式的核心思想是：使用者互動的合約地址不變（proxy），但實際邏輯可以指向新的實作合約。這帶來了便利但也引入了信任問題——誰有權升級？多簽？時間鎖？治理投票？</p>
 <h3 id="513-外部帳戶與合約帳戶-p0"><a class="header" href="#513-外部帳戶與合約帳戶-p0">5.1.3 外部帳戶與合約帳戶 <code>P0</code></a></h3>
 <ul>
 <li>EOA：私鑰控制，主動發起交易</li>
@@ -212,6 +286,26 @@
 <li>EOA 有 nonce</li>
 <li>合約無私鑰，只能按程式規則執行</li>
 </ul>
+<p>以太坊的帳戶模型與比特幣的 UTXO 模型有根本性的不同。在以太坊中，每個地址對應一個帳戶，帳戶有四個欄位：nonce（交易計數）、balance（ETH 餘額）、codeHash（合約程式碼的 hash，EOA 為空）、storageRoot（合約存儲的 Merkle root，EOA 為空）。</p>
+<pre><code class="language-text">帳戶類型對比：
+
+┌────────────────────────┬────────────────────────┐
+│     EOA (外部帳戶)       │   Contract Account      │
+├────────────────────────┼────────────────────────┤
+│ 由私鑰控制              │ 由程式碼控制              │
+│ 可主動發起交易           │ 只能被動觸發             │
+│ 沒有程式碼              │ 有程式碼（不可變）        │
+│ 沒有 storage            │ 有 storage               │
+│ nonce = 交易數量        │ nonce = 創建合約數量      │
+│ 建立成本: 免費           │ 建立成本: 部署 Gas        │
+├────────────────────────┼────────────────────────┤
+│ 地址 = keccak256(pubKey)│ 地址 = keccak256(        │
+│        取最後 20 bytes   │   sender, nonce) 或      │
+│                         │   CREATE2 確定性地址      │
+└────────────────────────┴────────────────────────┘
+</code></pre>
+<p>**Account Abstraction（帳戶抽象）**是以太坊近年來最重要的改進方向之一。ERC-4337 允許用戶使用智能合約錢包（而非 EOA）作為主要帳戶，從而支持社交恢復、多簽授權、Gas 代付、批量交易等功能。這對用戶體驗的提升是巨大的——用戶不再需要保管助記詞，也不需要事先持有 ETH 來支付 Gas。</p>
+<p>工程上需要注意的一個陷阱是 <code>tx.origin</code> vs <code>msg.sender</code> 的區分。<code>tx.origin</code> 永遠是發起交易的 EOA 地址，而 <code>msg.sender</code> 是直接的調用者（可能是另一個合約）。用 <code>tx.origin</code> 做權限檢查是一個經典的安全漏洞，因為攻擊者可以透過中間合約來繞過檢查。</p>
 <h3 id="514-世界狀態樹-p0"><a class="header" href="#514-世界狀態樹-p0">5.1.4 世界狀態樹 <code>P0</code></a></h3>
 <p>以太坊主要樹結構：</p>
 <ul>
@@ -224,6 +318,43 @@
 <li>狀態可驗證</li>
 <li>區塊摘要可快速校驗</li>
 </ul>
+<p>以太坊使用 Modified Merkle Patricia Trie（MPT）作為核心資料結構。與比特幣簡單的 Merkle Tree 不同，MPT 是一種鍵值對存儲結構，支持高效的查詢、插入和刪除操作，同時保持 Merkle 的可驗證性。</p>
+<pre><code class="language-text">以太坊的三棵樹：
+
+Block Header
+├── stateRoot ──────────&gt; State Trie
+│                         (所有帳戶的當前狀態)
+│                         Key: 帳戶地址
+│                         Value: [nonce, balance, storageRoot, codeHash]
+│
+├── transactionsRoot ───&gt; Transactions Trie
+│                         (本區塊的所有交易)
+│                         Key: 交易索引 (RLP encoded)
+│                         Value: 交易資料
+│
+└── receiptsRoot ───────&gt; Receipts Trie
+                          (本區塊所有交易的執行結果)
+                          Key: 交易索引
+                          Value: [status, gasUsed, logs[], ...]
+</code></pre>
+<p><strong>State Trie</strong> 是最重要也最龐大的一棵樹。它記錄了以太坊網路中每個帳戶的當前狀態。每當一筆交易被執行，State Trie 就會被更新——修改的帳戶對應的路徑會產生新的節點，而未修改的部分則保持不變（結構共享）。這種設計使得每個區塊只需要存儲「差異」而非完整狀態，大幅節省了存儲空間。</p>
+<p>MPT 的工程挑戰主要在效能方面。由於 trie 的深度可以很大（以太坊地址是 20 bytes = 40 hex chars），一次狀態讀取可能需要多次磁碟 I/O。以太坊客戶端使用了大量的快取和資料庫優化來緩解這個問題。Geth 的 snap sync 和 path-based storage 都是針對 MPT 效能問題的改進。更激進的方案是 Verkle Tree——使用向量承諾（vector commitment）替代 hash，將 proof 大小從 O(log N) 降低到 O(1)，這是以太坊路線圖中的重要里程碑。</p>
+<pre><code class="language-text">Modified Merkle Patricia Trie 結構示意：
+
+                    Root
+                   /    \
+              [0x1]      [0x7]
+             /    \         \
+         [0x1A]  [0x1F]    [0x7B]
+          /                   \
+      [0x1A3F]              [0x7B2C]
+         |                     |
+    Account A             Account B
+    {nonce: 5,            {nonce: 0,
+     balance: 10 ETH,     balance: 100 ETH,
+     storageRoot: ...,    storageRoot: ...,
+     codeHash: ...}       codeHash: 0x0}
+</code></pre>
 <h3 id="515-以太坊經濟體-p0"><a class="header" href="#515-以太坊經濟體-p0">5.1.5 以太坊經濟體 <code>P0</code></a></h3>
 <p>經濟結構關鍵：</p>
 <ul>
@@ -231,11 +362,55 @@
 <li>PoS 質押與懲罰</li>
 <li>MEV 對排序與收益分配的影響</li>
 </ul>
+<p><strong>EIP-1559</strong>（2021 年 8 月倫敦升級引入）是以太坊手續費機制的重大改革。在此之前，以太坊使用簡單的「第一價格拍賣」——用戶出價越高越容易被打包，但這導致了嚴重的 Gas 價格波動和用戶體驗問題。EIP-1559 引入了雙層費率結構：</p>
+<pre><code class="language-text">EIP-1559 費率結構：
+
+┌──────────────────────────────────────────┐
+│ 用戶支付的總手續費 =                        │
+│   Base Fee (協議決定，動態調整) +            │
+│   Priority Fee (用戶設定，給驗證者的小費)      │
+├──────────────────────────────────────────┤
+│                                          │
+│ Base Fee:                                │
+│ - 由協議根據區塊使用率自動調整              │
+│ - 區塊 &gt; 50% 滿 → base fee 上升           │
+│ - 區塊 &lt; 50% 滿 → base fee 下降           │
+│ - 每區塊最多變動 12.5%                     │
+│ - Base Fee 被銷毀（burn）！                │
+│                                          │
+│ Priority Fee (tip):                      │
+│ - 用戶自行設定                             │
+│ - 直接支付給區塊驗證者                     │
+│ - 用於在同一區塊內的交易優先排序            │
+└──────────────────────────────────────────┘
+</code></pre>
+<p>Base Fee 的銷毀機制（burn）是一個精妙的經濟設計。ETH 的總供應量不再只增不減——當網路使用量高時，銷毀的 ETH 可能超過新發行的 ETH，使 ETH 成為通縮資產。2022 年 The Merge 之後，ETH 的年發行率從 PoW 時代的約 4.3% 降至 PoS 的約 0.5%，加上 EIP-1559 的銷毀，ETH 在高使用量時期確實出現了淨通縮。</p>
+<p><strong>PoS 質押經濟</strong>在 The Merge（2022 年 9 月）後成為以太坊安全的基礎。驗證者需要質押 32 ETH 才能參與共識。誠實的驗證者獲得出塊獎勵和 attestation 獎勵（年化約 3-5%）；惡意行為則被 slashing——例如 double voting（同一 slot 投票給兩個不同區塊）或 surround voting 會導致質押被部分或全部沒收。</p>
+<p>**MEV（Maximal Extractable Value）**是以太坊經濟中一個複雜且影響深遠的現象。驗證者（或更精確地說，區塊建構者）可以透過重新排序、插入或刪除交易來獲取額外收益。典型的 MEV 策略包括：</p>
+<pre><code class="language-text">MEV 常見策略：
+
+1. 三明治攻擊 (Sandwich Attack):
+   用戶提交: swap 10 ETH → USDC
+   攻擊者:
+   ├── Tx1: 先買入大量 USDC（推高價格）
+   ├── 用戶 Tx: 以更高價格買入（用戶多付了）
+   └── Tx2: 攻擊者賣出 USDC（獲利）
+
+2. 清算搶跑 (Liquidation Front-running):
+   DeFi 借貸協議中，有人的抵押品不足
+   → 攻擊者搶先執行清算，獲得清算獎勵
+
+3. 套利 (Arbitrage):
+   DEX A 上 ETH = $2000
+   DEX B 上 ETH = $2010
+   → 在 A 買入，在 B 賣出，淨賺 $10
+</code></pre>
 <p>工程要點：</p>
 <ul>
 <li>交易策略需適配動態費率</li>
 <li>高價值交易需防 MEV 與重排</li>
 </ul>
+<p>為了緩解 MEV 的負面影響，以太坊生態發展出了 MEV-Boost 系統——驗證者將區塊建構權外包給專業的 block builder，builder 透過 relay 提交區塊，驗證者選擇收益最高的區塊進行提議。這種 Proposer-Builder Separation（PBS）的設計將 MEV 的提取規範化，減少了驗證者直接進行時間敏感操作的需求，但也引入了新的中心化風險（少數 builder 佔據大部分區塊建構）。</p>
 <h2 id="52-區塊鏈的共識演算法-p0"><a class="header" href="#52-區塊鏈的共識演算法-p0">5.2 區塊鏈的共識演算法 <code>P0</code></a></h2>
 <h3 id="521-pos原理-p0"><a class="header" href="#521-pos原理-p0">5.2.1 PoS原理 <code>P0</code></a></h3>
 <p>PoS 由質押權益決定提議/驗證權：</p>
@@ -244,10 +419,59 @@
 <li>惡意行為可被 slash</li>
 </ul>
 <p>優點：低能源消耗、最終性更快。</p>
+<p>Proof of Stake（權益證明）是目前最主流的共識機制。與 PoW 使用計算能力來決定出塊權不同，PoS 使用經濟質押——驗證者鎖定一定數量的代幣作為「保證金」，然後被協議隨機選中來提議或驗證區塊。誠實行為獲得獎勵，惡意行為則面臨質押被罰沒的風險。</p>
+<p>以太坊的 PoS 實作（Gasper = Casper FFG + LMD-GHOST）是目前最複雜的 PoS 系統之一。它的工作流程如下：</p>
+<pre><code class="language-text">以太坊 PoS 共識流程：
+
+時間軸:
+├── Slot 0 (12秒) ──── Slot 1 ──── Slot 2 ──── ... ──── Slot 31 ──┤
+│                                                                    │
+└──────────────────── Epoch (32 slots = 6.4 分鐘) ──────────────────┘
+
+每個 Slot:
+1. 一位驗證者被隨機選為 Proposer → 提議區塊
+2. 一組驗證者（Committee）被選為 Attester → 對區塊投票
+
+每個 Epoch 結束:
+- Casper FFG 嘗試 finalize（最終確定）checkpoint
+- 需要 2/3 的驗證者投票同意
+- 一旦 finalized → 該區塊及之前的歷史不可逆轉
+
+Slashing 條件:
+├── Double voting: 同一 slot 投票給兩個不同區塊
+└── Surround voting: attestation 範圍包含另一個 attestation
+    → 質押被沒收（最少 1/32 ~ 最多全部）
+    → 被強制退出驗證者集合
+</code></pre>
+<p>PoS 相比 PoW 的優勢不僅在於能源消耗。PoS 可以提供<strong>經濟最終性</strong>——一旦區塊被 finalized，要逆轉它需要至少 1/3 的質押被罰沒。這比 PoW 的機率最終性要強得多。在以太坊上，交易通常在 2 個 epoch（約 12.8 分鐘）後被 finalized。</p>
+<p>PoS 的主要挑戰包括：(1) <strong>Nothing at Stake 問題</strong>——在 PoW 中，礦工只能在一條鏈上挖礦（因為算力有限），但在 PoS 中，驗證者可以在多條分叉上同時投票（因為投票幾乎沒有成本）。Casper 透過 slashing 來解決這個問題。(2) <strong>Long Range Attack</strong>——攻擊者取得舊的私鑰（對應已退出的驗證者），從很久以前的區塊開始建立替代鏈。防禦方式是 weak subjectivity checkpoint——新節點需要從可信來源獲取最近的 checkpoint。(3) <strong>質押中心化</strong>——Lido 等流動性質押協議佔據了大量質押份額，引發了去中心化的擔憂。</p>
 <h3 id="522-dpos原理-p1"><a class="header" href="#522-dpos原理-p1">5.2.2 DPoS原理 <code>P1</code></a></h3>
 <p>DPoS 透過持幣人投票選出代表節點。</p>
 <p>優點：性能與治理效率高。
 代價：權力更集中，治理博弈更明顯。</p>
+<p>Delegated Proof of Stake（委託權益證明）是 Daniel Larimer 在 2014 年提出的共識機制，最初應用於 BitShares，後來在 EOS、TRON 等公鏈中廣泛採用。DPoS 的核心思想是「代議制」——持幣人不直接參與共識，而是投票選出一組代表（通常稱為 block producer 或 witness），由這些代表輪流出塊。</p>
+<pre><code class="language-text">DPoS 運作模型：
+
+持幣者投票:
+┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐
+│User A│ │User B│ │User C│ │User D│ ...
+└──┬───┘ └──┬───┘ └──┬───┘ └──┬───┘
+   │        │        │        │
+   v        v        v        v
+┌────────────────────────────────────┐
+│         投票池 (按質押權重)          │
+└───────────────┬────────────────────┘
+                │ 選出 Top 21 (以 EOS 為例)
+                v
+   ┌────┐ ┌────┐ ┌────┐     ┌────┐
+   │BP 1│ │BP 2│ │BP 3│ ... │BP21│
+   └──┬─┘ └──┬─┘ └──┬─┘     └──┬─┘
+      │      │      │          │
+      v      v      v          v
+   Block 1  Block 2  Block 3  ...  (輪流出塊)
+</code></pre>
+<p>DPoS 的性能優勢來自於其較少的共識參與者數量。當只有 21 個節點需要達成共識時，通訊複雜度從 PoS 的 O(N^2) 降低到了可管理的範圍，出塊時間可以低至 0.5 秒。EOS 曾經宣稱達到 4000+ TPS 的處理能力。</p>
+<p>然而，DPoS 的去中心化程度一直受到質疑。投票往往被大戶把持，形成了「寡頭政治」——EOS 的 21 個超級節點中，很多都來自同一利益集團。此外，投票冷漠是另一個問題——大多數持幣者不參與投票，導致少數積極投票者擁有不成比例的影響力。這些治理問題提醒我們：共識機制不僅是技術選擇，更是社會制度設計。</p>
 <h3 id="523-pbft原理-p1"><a class="header" href="#523-pbft原理-p1">5.2.3 PBFT原理 <code>P1</code></a></h3>
 <p>PBFT 適合節點數較少、身份可管理場景（常見於聯盟鏈）。</p>
 <p>特點：</p>
@@ -255,6 +479,33 @@
 <li>快速確定性最終性</li>
 <li>通訊複雜度較高</li>
 </ul>
+<p>Practical Byzantine Fault Tolerance（實用拜占庭容錯）由 Miguel Castro 和 Barbara Liskov 在 1999 年提出。它是第一個在實際環境中可行的 BFT 演算法。PBFT 可以容忍最多 f 個惡意節點（在總共 3f+1 個節點中），並保證只要惡意節點不超過 1/3，系統就能正確運作並達成共識。</p>
+<pre><code class="language-text">PBFT 三階段協議：
+
+Client         Primary        Replica 1      Replica 2      Replica 3
+  |               |               |               |               |
+  |--- Request --&gt;|               |               |               |
+  |               |               |               |               |
+  |               |== Pre-prepare ================================&gt;|
+  |               |               |               |               |
+  |               |&lt;============= Prepare ========================&gt;|
+  |               |               |               |               |
+  |               |&lt;============= Commit =========================&gt;|
+  |               |               |               |               |
+  |&lt;== Reply =====================================================|
+  |               |               |               |               |
+
+三階段:
+1. Pre-prepare: Primary 對請求排序並廣播
+2. Prepare: 節點確認排序，收到 2f+1 個 prepare 進入 prepared 狀態
+3. Commit: 節點確認已 prepared，收到 2f+1 個 commit 後執行
+
+容錯能力: 3f+1 個節點可容忍 f 個惡意節點
+通訊複雜度: O(N^2) — 每階段每個節點都要與所有其他節點通訊
+</code></pre>
+<p>PBFT 的最大優勢是<strong>確定性最終性</strong>——一旦交易被確認，就不會被逆轉（除非超過 1/3 的節點是惡意的）。這與 PoW 的機率最終性形成鮮明對比。對於金融機構等需要即時確認的場景，這個特性非常重要。</p>
+<p>PBFT 的主要限制在於<strong>可擴展性</strong>。O(N^2) 的通訊複雜度意味著當節點數量增加時，網路流量會急劇上升。在實踐中，PBFT 通常只適用於數十個節點的場景。這也是為什麼 PBFT 主要用於聯盟鏈——參與者數量有限且身份已知。Hyperledger Fabric、Tendermint（Cosmos 的共識引擎）都使用了 PBFT 的變體。</p>
+<p>現代 BFT 共識演算法（如 HotStuff、Jolteon、Bullshark）在 PBFT 的基礎上做了重要改進，將通訊複雜度從 O(N^2) 降低到 O(N)，使得更大規模的驗證者集合成為可能。HotStuff 被 Facebook（Meta）的 Diem 項目採用，後來也影響了 Aptos 和 Sui 的共識設計。</p>
 <h2 id="53-區塊鏈的技術方向"><a class="header" href="#53-區塊鏈的技術方向">5.3 區塊鏈的技術方向</a></h2>
 <h3 id="531-跨鏈-p0"><a class="header" href="#531-跨鏈-p0">5.3.1 跨鏈 <code>P0</code></a></h3>
 <p>跨鏈核心是「在鏈 A 驗證鏈 B 的事件」：</p>
@@ -263,12 +514,49 @@
 <li>燒釋（burn-release）</li>
 <li>訊息橋（message bridge）</li>
 </ul>
+<p>跨鏈技術解決的是區塊鏈生態的「孤島問題」。每條區塊鏈都是一個獨立的信任域，它們之間無法直接通訊。你在以太坊上的 ETH 不能直接在 Solana 上使用，Cosmos 上的 ATOM 也不能直接在 Polkadot 上交易。跨鏈橋的出現使得資產和資訊可以在不同鏈之間流動。</p>
+<pre><code class="language-text">跨鏈橋基本架構：
+
+Lock-and-Mint 模式 (最常見):
+
+Chain A                     Bridge                    Chain B
+┌───────────┐         ┌──────────────┐         ┌───────────┐
+│           │  Lock    │              │  Mint    │           │
+│  User 鎖定 │────────&gt;│  Relayer/    │────────&gt;│ User 收到  │
+│  10 ETH   │         │  Oracle 驗證  │         │ 10 wETH   │
+│  到 Bridge │         │  並轉發證明   │         │(wrapped)  │
+│  Contract  │         │              │         │           │
+└───────────┘         └──────────────┘         └───────────┘
+
+返回流程 (Burn-and-Release):
+Chain B: Burn 10 wETH → Bridge 驗證 → Chain A: Release 10 ETH
+</code></pre>
 <p>安全重點：</p>
 <ul>
 <li>驗證者模型</li>
 <li>最終性假設</li>
 <li>重放與重組處理</li>
 </ul>
+<p>跨鏈橋的安全性是區塊鏈領域最大的工程挑戰之一。2022 年是跨鏈橋安全的災難年——Wormhole 被盜 3.2 億美元（偽造簽名）、Ronin Bridge 被盜 6.25 億美元（私鑰洩露）、Nomad Bridge 被盜 1.9 億美元（驗證邏輯 bug）。Vitalik Buterin 曾指出，跨鏈橋的安全上限受限於它所依賴的最弱信任假設。</p>
+<pre><code class="language-text">跨鏈橋安全模型對比：
+
+┌─────────────┬──────────────┬──────────────┬──────────────┐
+│ 驗證模型     │ 信任假設      │ 安全性       │ 代表項目      │
+├─────────────┼──────────────┼──────────────┼──────────────┤
+│ 多簽        │ N/M 簽名者    │ 低           │ Ronin        │
+│             │ 誠實          │              │              │
+├─────────────┼──────────────┼──────────────┼──────────────┤
+│ Oracle/     │ 外部驗證者    │ 中           │ LayerZero    │
+│ Relayer     │ 集合誠實      │              │              │
+├─────────────┼──────────────┼──────────────┼──────────────┤
+│ Light       │ 源鏈共識      │ 高           │ IBC          │
+│ Client      │ 安全          │              │ (Cosmos)     │
+├─────────────┼──────────────┼──────────────┼──────────────┤
+│ ZK Proof    │ 數學正確性    │ 最高         │ zkBridge,    │
+│             │              │              │ Succinct     │
+└─────────────┴──────────────┴──────────────┴──────────────┘
+</code></pre>
+<p>工程上最安全的跨鏈方式是 <strong>Light Client 驗證</strong>：在目標鏈上運行源鏈的輕客戶端，直接驗證源鏈的共識證明。Cosmos 的 IBC（Inter-Blockchain Communication）協議就是這個思路。更先進的方案是用 <strong>ZK Proof</strong> 來壓縮驗證——在目標鏈上驗證一個 ZK 證明，該證明證明了源鏈的共識正確性。這可以大幅降低鏈上驗證的 Gas 消耗。</p>
 <h3 id="532-同態加密-p1"><a class="header" href="#532-同態加密-p1">5.3.2 同態加密 <code>P1</code></a></h3>
 <p>同態加密允許在密文上計算，潛力在隱私計算與機構協作。</p>
 <p>限制：</p>
@@ -276,6 +564,33 @@
 <li>計算與延遲成本高</li>
 <li>通用場景尚需工程折衷</li>
 </ul>
+<p>同態加密（Homomorphic Encryption, HE）是密碼學中的「聖杯」之一。它允許在不解密的情況下對加密資料進行計算，計算結果解密後與在明文上計算的結果相同。用數學表示：E(a) + E(b) = E(a+b)，其中 E 是加密函數。</p>
+<pre><code class="language-text">同態加密原理：
+
+傳統計算:
+  明文資料 → 計算 → 結果
+  (資料可見，隱私風險)
+
+同態加密計算:
+  明文 → 加密 → 密文資料 → 在密文上計算 → 密文結果 → 解密 → 明文結果
+  (計算過程中資料始終加密，第三方看不到原始資料)
+
+類型:
+┌────────────────────┬───────────────┬────────────┐
+│ 類型                │ 支持的操作     │ 效能        │
+├────────────────────┼───────────────┼────────────┤
+│ 部分同態 (PHE)      │ 只支持加法或   │ 快          │
+│                     │ 只支持乘法     │             │
+├────────────────────┼───────────────┼────────────┤
+│ 有限同態 (SHE)      │ 有限次加法+    │ 中等        │
+│                     │ 乘法           │             │
+├────────────────────┼───────────────┼────────────┤
+│ 全同態 (FHE)        │ 任意次數的     │ 非常慢      │
+│                     │ 加法+乘法      │ (10^4-10^6x)│
+└────────────────────┴───────────────┴────────────┘
+</code></pre>
+<p>在區塊鏈中，FHE 的應用場景包括：(1) <strong>隱私 DeFi</strong>——在不暴露交易金額的情況下執行借貸和交易邏輯；(2) <strong>隱私投票</strong>——在不暴露個別投票的情況下計算投票結果；(3) <strong>機構協作</strong>——多個機構共享加密資料進行聯合計算。Zama 的 fhEVM 專案就是嘗試將 FHE 整合到 EVM 中，使得智能合約可以在加密狀態上進行計算。</p>
+<p>然而，FHE 的效能問題仍然是最大的工程障礙。目前全同態加密的計算開銷約為明文計算的 10,000 到 1,000,000 倍。雖然硬體加速（如專用 ASIC）和演算法改進正在持續推進，但距離大規模生產環境的應用還有相當距離。工程上的折衷方案是混合使用——只在必要的部分使用同態加密，其餘部分使用傳統技術。</p>
 <h3 id="533-零知識證明-p0"><a class="header" href="#533-零知識證明-p0">5.3.3 零知識證明 <code>P0</code></a></h3>
 <p>ZK 用於「證明我知道答案且答案正確，但不暴露細節」。</p>
 <p>主流方向：</p>
@@ -283,12 +598,52 @@
 <li>zk-SNARK</li>
 <li>zk-STARK</li>
 </ul>
+<p>零知識證明（Zero-Knowledge Proof, ZKP）是現代密碼學中最強大的工具之一。它允許證明者（prover）向驗證者（verifier）證明一個陳述是真的，而不暴露任何除了「陳述為真」以外的資訊。</p>
+<p>一個經典的類比：你想向朋友證明你知道某個迷宮的解法，但不想告訴他具體路線。你讓朋友先離開，你走到迷宮的出口等他。朋友回來後看到你在出口——他確信你知道解法，但完全不知道你走的是哪條路。</p>
+<pre><code class="language-text">ZK Proof 運作流程：
+
+Prover (證明者)              Verifier (驗證者)
+    |                             |
+    |  1. 我知道一個 x,            |
+    |     使得 hash(x) = Y        |
+    |                             |
+    |  2. 生成 ZK Proof π         |
+    |     (不暴露 x 的值)          |
+    |                             |
+    |--- 發送 proof π -----------&gt;|
+    |                             |
+    |                    3. 驗證 π |
+    |                       (只需 Y 和 π)
+    |                       不需要知道 x
+    |                             |
+    |               驗證通過 ✓     |
+    |   (驗證者確信 x 存在，       |
+    |    但完全不知道 x 是什麼)     |
+
+
+zk-SNARK vs zk-STARK 對比：
+
+┌──────────────┬─────────────────┬─────────────────┐
+│              │ zk-SNARK         │ zk-STARK         │
+├──────────────┼─────────────────┼─────────────────┤
+│ Proof 大小    │ ~200 bytes      │ ~50-200 KB       │
+│ 驗證時間      │ ~ms             │ ~ms              │
+│ 證明時間      │ 秒-分鐘         │ 秒-分鐘          │
+│ Trusted Setup│ 需要 ❗          │ 不需要 ✅         │
+│ 量子安全      │ 否              │ 是               │
+│ 代表項目      │ Groth16,        │ StarkNet,        │
+│              │ PLONK            │ STARK prover     │
+└──────────────┴─────────────────┴─────────────────┘
+</code></pre>
 <p>工程用途：</p>
 <ul>
 <li>L2 validity proof</li>
 <li>隱私轉帳</li>
 <li>身份最小揭露</li>
 </ul>
+<p><strong>L2 Validity Proof</strong> 是 ZK 技術目前最重要的應用。ZK Rollup 在鏈下執行大量交易，然後生成一個 ZK Proof 提交到 L1。L1 合約只需要驗證這個 proof（消耗很少的 Gas），就能確信所有鏈下交易都被正確執行了。這使得 L2 可以在繼承 L1 安全性的前提下，將吞吐量提升數百倍。</p>
+<p><strong>隱私轉帳</strong>是 ZK 的另一個重要應用。Zcash 使用 zk-SNARK 來隱藏交易的發送者、接收者和金額。Tornado Cash 使用 ZK 來實現以太坊上的混幣器——用戶存入固定金額的 ETH，稍後從不同地址提取，ZK Proof 證明提取者確實曾經存入過，但不暴露是哪次存入。</p>
+<p><strong>身份最小揭露</strong>是 ZK 的新興應用方向。例如，你想證明自己年滿 18 歲，但不想暴露出生日期。透過 ZK Proof，你可以生成一個證明：「我持有一份有效的身份文件，其中的出生日期早於 18 年前」，而不暴露身份文件的任何其他資訊。Worldcoin 的 World ID 和 Polygon ID 都在探索這個方向。</p>
 <h3 id="534-二層網絡layer2-p0"><a class="header" href="#534-二層網絡layer2-p0">5.3.4 二層網絡（Layer2） <code>P0</code></a></h3>
 <p>L2 目標：降低費用、提高吞吐，同時繼承 L1 安全。</p>
 <p>主流：</p>
@@ -298,24 +653,92 @@
 </ul>
 <pre><code class="language-text">User Tx -&gt; L2 Sequencer -&gt; Batch/Proof -&gt; L1 Settlement
 </code></pre>
+<p>Layer 2 是解決區塊鏈「不可能三角」（去中心化、安全性、可擴展性三者不可兼得）的核心技術路徑。L2 的基本思想是：將大量交易的「執行」移到鏈下，但將「驗證」和「資料可用性」留在 L1。這樣 L2 繼承了 L1 的安全性，但不受 L1 吞吐量的限制。</p>
+<pre><code class="language-text">L2 架構全景：
+
+┌─────────────────────────────────────────────────────────┐
+│                     Layer 2                              │
+│                                                          │
+│  ┌──────────────────────┐  ┌──────────────────────────┐ │
+│  │  Optimistic Rollup    │  │      ZK Rollup            │ │
+│  ├──────────────────────┤  ├──────────────────────────┤ │
+│  │ - 先假設交易有效       │  │ - 每批交易附帶 ZK Proof   │ │
+│  │ - 7天挑戰期           │  │ - 數學保證交易正確性      │ │
+│  │ - 有人挑戰成功        │  │ - 無需等待挑戰期         │ │
+│  │   → 交易被撤銷        │  │ - 即時確認               │ │
+│  │ - 代表: Arbitrum,     │  │ - 代表: zkSync,          │ │
+│  │   Optimism, Base      │  │   StarkNet, Scroll       │ │
+│  └──────────────────────┘  └──────────────────────────┘ │
+│                                                          │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │                  Sequencer                         │   │
+│  │  - 接收用戶交易                                    │   │
+│  │  - 排序並執行                                      │   │
+│  │  - 批量提交到 L1                                   │   │
+│  │  - 目前多為中心化（去中心化 sequencer 進行中）       │   │
+│  └──────────────────────────────────────────────────┘   │
+└───────────────────────────┬─────────────────────────────┘
+                            │ Batch / Proof / DA
+                            v
+┌─────────────────────────────────────────────────────────┐
+│                   Layer 1 (Ethereum)                     │
+│  - 驗證 proof 或處理挑戰                                  │
+│  - 存儲交易資料（data availability）                       │
+│  - 提供最終結算                                           │
+└─────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Optimistic Rollup</strong> 的工作原理是「樂觀假設」：先假設所有提交到 L1 的交易批次都是正確的。如果有人發現錯誤，可以在挑戰期（通常 7 天）內提交「fraud proof」（欺詐證明）。如果 fraud proof 被 L1 合約驗證為有效，錯誤的批次會被回滾，惡意的 sequencer 被罰沒。這種設計的優勢是技術實現相對簡單（不需要 ZK 電路），劣勢是提款到 L1 需要等待 7 天的挑戰期。</p>
+<p><strong>ZK Rollup</strong> 則是每次提交批次時都附帶一個 ZK Proof，數學證明所有交易都被正確執行。L1 合約只需要驗證這個 proof（幾十萬 Gas），就能確信整個批次的正確性。ZK Rollup 不需要挑戰期，提款可以在 proof 被驗證後立即完成。但 ZK Rollup 的開發難度更高——需要將 EVM 的所有操作轉換為 ZK 電路（即 zkEVM），這是一項巨大的工程挑戰。</p>
+<p>工程上需要特別關注的是 <strong>Sequencer 的中心化問題</strong>。目前大多數 L2（Arbitrum、Optimism、zkSync）的 sequencer 都是中心化的——由項目方運行單一的 sequencer 節點。這意味著 sequencer 可以審查交易、提取 MEV、甚至暫停服務。去中心化 sequencer 是各個 L2 項目的長期目標，但實現起來面臨排序公平性、延遲要求、激勵設計等多重挑戰。作為工程折衷，許多 L2 提供了「強制包含」機制——即使 sequencer 不合作，用戶也可以直接向 L1 提交交易。</p>
 <h3 id="535-nft-p1"><a class="header" href="#535-nft-p1">5.3.5 NFT <code>P1</code></a></h3>
 <p>NFT 是非同質資產標準化表達：</p>
 <ul>
 <li>ERC-721（單一資產）</li>
 <li>ERC-1155（多資產混合）</li>
 </ul>
+<p>NFT（Non-Fungible Token，非同質化代幣）代表了區塊鏈上獨一無二的數位資產。與 ERC-20 代幣不同（每個 USDC 都是等價可替換的），每個 NFT 都有唯一的 token ID，可以代表不同的資產——數位藝術品、遊戲道具、域名、房地產權證等。</p>
+<pre><code class="language-text">ERC-721 vs ERC-1155 對比：
+
+ERC-721 (單一資產):
+┌──────────────────────────────────┐
+│ Contract: CryptoPunks             │
+│ Token #1 → Owner: 0xAAA          │
+│ Token #2 → Owner: 0xBBB          │
+│ Token #3 → Owner: 0xCCC          │
+│ 每個 token 都是獨立的 NFT         │
+│ 每次轉移一個                      │
+└──────────────────────────────────┘
+
+ERC-1155 (多資產混合):
+┌──────────────────────────────────┐
+│ Contract: GameItems               │
+│ Token ID 1 (劍) → 0xAAA: 3個     │
+│                   0xBBB: 1個     │
+│ Token ID 2 (盾) → 0xCCC: 5個     │
+│ Token ID 3 (限量皮膚) → 0xDDD:1個│
+│ 同時支持同質(劍/盾)和非同質(皮膚)  │
+│ 可批量轉移，節省 Gas              │
+└──────────────────────────────────┘
+</code></pre>
 <p>工程重點：</p>
 <ul>
 <li>metadata 存儲策略（鏈上/鏈下）</li>
 <li>版權與授權模型</li>
 <li>市場流動性與洗售風險</li>
 </ul>
-<h2 id="本章總結"><a class="header" href="#本章總結">本章總結</a></h2>
+<p><strong>Metadata 存儲</strong>是 NFT 工程中最重要的設計決策之一。NFT 的鏈上部分通常只包含 token ID 和一個 <code>tokenURI</code>（指向 metadata 的 URL）。Metadata 本身（名稱、描述、圖片 URL 等）可以存儲在三個地方：(1) 完全鏈上——最去中心化但最昂貴，適合小型 SVG 藝術品；(2) IPFS/Arweave——內容尋址，不可篡改，是目前的最佳實踐；(3) 中心化伺服器——最便宜但項目方可以隨時修改或下線。</p>
+<p><strong>常見的 NFT 工程陷阱</strong>包括：(1) metadata 伺服器當機導致 NFT 顯示為空白——OpenSea 上曾多次出現此情況；(2) tokenURI 指向 HTTP URL 而非 IPFS，項目方可以偷偷替換圖片；(3) 合約沒有實現 <code>supportsInterface</code>（EIP-165），導致某些市場無法正確識別 NFT 標準；(4) 未考慮 royalty 標準（EIP-2981），導致二次銷售無法自動收取版稅。</p>
+<h2 id="技術原理深度回顧"><a class="header" href="#技術原理深度回顧">技術原理深度回顧</a></h2>
 <ul>
 <li>Ethereum 提供了可程式化金融基座</li>
 <li>共識機制決定了安全與性能上限</li>
 <li>跨鏈、ZK、L2 是未來幾年的核心主線</li>
 </ul>
+<p>以太坊的意義在於它證明了「可程式化區塊鏈」的可行性，並圍繞它建立了一個龐大的開發者生態。從 Solidity 語言到 Hardhat/Foundry 開發框架，從 OpenZeppelin 的安全合約庫到 The Graph 的資料索引，以太坊生態已經形成了完整的開發工具鏈。即使其他 L1（Solana、Avalanche、Sui）在效能上可能更優，以太坊的開發者生態和 DeFi 流動性仍然是其最大的護城河。</p>
+<p>共識機制的選擇是區塊鏈架構設計的第一個重大決策。PoW 提供了最強的去中心化和安全性，但犧牲了效能和能源效率。PoS 在安全性和效能之間找到了更好的平衡點。DPoS 和 PBFT 適合對效能要求極高但可以接受較少驗證者的場景。沒有「最好的」共識機制——只有最適合特定需求的共識機制。</p>
+<p>跨鏈、ZK 和 L2 三條技術主線正在深度融合。ZK Rollup 本身就是 ZK + L2 的結合。跨鏈橋越來越多地使用 ZK Proof 來提升安全性。模組化架構讓 DA 層、執行層、結算層可以自由組合。未來的區塊鏈系統很可能不是一條單體鏈，而是一個由多個專業化模組組成的網路。</p>
+<h2 id="白話總結"><a class="header" href="#白話總結">白話總結</a></h2>
+<p>如果說比特幣是去中心化的「計算機」，以太坊就是去中心化的「智慧型手機」——它不只能做一件事，而是可以跑各種 App。智能合約就像是住在區塊鏈上的小程式，一旦部署就誰也改不了（所以寫 bug 的代價特別大）。Gas 費是你用以太坊要付的「使用費」，EIP-1559 之後這個費用變得更可預測了，而且一部分會被銷毀——就像央行在回收鈔票一樣。PoS 共識讓以太坊不再需要礦工燒電，取而代之的是驗證者押錢來保證誠實。跨鏈橋讓不同區塊鏈能互相「講話」，但橋一直是被駭客盯上的大目標，幾十億美元的損失告訴我們橋的安全設計不能馬虎。ZK 證明大概是密碼學裡最「魔法」的東西——我能證明我知道答案，但你完全不知道答案是什麼。L2 Rollup 就像在以太坊旁邊開了一條快車道，交易在快車道上執行，結果再寫回主鏈，速度快了百倍但安全性一樣。</p>
 
                     </main>
 

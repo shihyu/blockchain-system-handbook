@@ -179,47 +179,359 @@
                     <main>
                         <h1 id="5-錢包金鑰與簽名流程"><a class="header" href="#5-錢包金鑰與簽名流程">5. 錢包、金鑰與簽名流程</a></h1>
 <h2 id="51-錢包類型"><a class="header" href="#51-錢包類型">5.1 錢包類型</a></h2>
-<ul>
-<li>EOA: 單私鑰控制，簡單但單點風險高</li>
-<li>Smart Contract Wallet (AA): 規則可程式化</li>
-<li>MPC Wallet: 私鑰分片，不在單點重建</li>
-<li>Hardware Wallet: 實體隔離簽名</li>
-</ul>
-<h2 id="52-金鑰管理層級"><a class="header" href="#52-金鑰管理層級">5.2 金鑰管理層級</a></h2>
-<ul>
-<li>熱錢包: 線上簽名，小額快取</li>
-<li>溫錢包: 半自動簽核，中額調度</li>
-<li>冷錢包: 離線簽名，大額保管</li>
-</ul>
-<h2 id="53-簽名流程"><a class="header" href="#53-簽名流程">5.3 簽名流程</a></h2>
-<pre><code class="language-text">User Intent
-   |
-   v
-Policy Engine --(額度/名單/時間窗)-&gt; Allow?
-   |
-   v
-Tx Builder -&gt; Simulation -&gt; Risk Check
-   |
-   v
-Signer (EOA/MPC/Multisig)
-   |
-   v
-Broadcast -&gt; Mempool -&gt; Block -&gt; Finality
+<p>錢包是使用者與區塊鏈互動的入口，但從工程角度來看，它不是「存放資產的容器」，而是「控制簽名權限的系統」。資產永遠在鏈上，錢包只是持有能夠移動這些資產的私鑰。不同類型的錢包在安全性、便利性和可程式性之間做出不同的權衡。</p>
+<h3 id="eoaexternally-owned-account"><a class="header" href="#eoaexternally-owned-account">EOA（Externally Owned Account）</a></h3>
+<p>EOA 是最傳統的錢包形式——由一把私鑰直接控制的帳戶。私鑰透過 ECDSA（Elliptic Curve Digital Signature Algorithm）在 secp256k1 曲線上進行簽名，公鑰經 Keccak-256 雜湊後取最後 20 bytes 作為地址。</p>
+<p>EOA 的優點是簡單直接：一把 key 對應一個地址，簽名邏輯在鏈下完成，不消耗額外的 Gas。但它的致命缺陷是<strong>單點故障</strong>——私鑰丟失意味著永久失去帳戶控制權，私鑰洩漏則意味著所有資產可被立即轉走，且無法撤銷。</p>
+<pre><code class="language-text">EOA 的金鑰衍生流程：
+
+  隨機種子 (256 bits entropy)
+       |
+       v
+  助記詞 (BIP-39, 12/24 words)
+       |
+       v
+  Master Seed (BIP-32)
+       |
+       v
+  HD Key Derivation (BIP-44 路徑: m/44'/60'/0'/0/n)
+       |
+       v
+  Private Key (256 bits)
+       |
+       v
+  Public Key = privateKey * G  (secp256k1 橢圓曲線乘法)
+       |
+       v
+  Address = keccak256(publicKey)[12:32]  (取後 20 bytes)
 </code></pre>
+<p><strong>常見陷阱</strong>：很多開發者在測試環境使用明文私鑰，然後不小心將其 commit 到 Git。一旦私鑰出現在公開的 GitHub 倉庫中，機器人會在數秒內掃描到並轉走所有資產。永遠使用環境變數或 secrets manager 管理私鑰。</p>
+<h3 id="smart-contract-walletaccount-abstraction"><a class="header" href="#smart-contract-walletaccount-abstraction">Smart Contract Wallet（Account Abstraction）</a></h3>
+<p>Smart Contract Wallet 將錢包的控制邏輯從協議層移到了智慧合約層。ERC-4337（Account Abstraction）標準允許開發者定義任意的驗證邏輯——例如：多簽（3/5 簽名才能執行）、社交恢復（指定的朋友可以幫你重設簽名者）、每日轉帳額度限制、Gas 代付（paymaster 替使用者付 Gas）。</p>
+<p>這是 Web3 使用者體驗的重大突破。傳統 EOA 要求使用者自行保管助記詞——對於非技術使用者來說，這是極高的心理和認知門檻。Smart Contract Wallet 則可以實現「用 email 登入」、「用手機指紋驗證交易」等接近 Web2 的體驗。</p>
+<pre><code class="language-text">ERC-4337 Account Abstraction 架構：
+
+  User                     Bundler                  EntryPoint Contract
+   |                         |                           |
+   |  1. 建構 UserOperation  |                           |
+   |─────────────────────────&gt;                           |
+   |                         |  2. 打包多筆 UserOp       |
+   |                         |──────────────────────────&gt;|
+   |                         |                           |
+   |                         |  3. 逐一驗證 &amp; 執行       |
+   |                         |                           |
+   |                         |     ┌─────────────────┐   |
+   |                         |     │ Smart Contract  │   |
+   |                         |     │ Wallet          │   |
+   |                         |     │                 │   |
+   |                         |     │ validateUserOp()│&lt;──|
+   |                         |     │ execute()       │&lt;──|
+   |                         |     └─────────────────┘   |
+   |                         |                           |
+   |                         |     ┌─────────────────┐   |
+   |                         |     │ Paymaster       │   |
+   |                         |     │ (可選: 代付Gas) │&lt;──|
+   |                         |     └─────────────────┘   |
+</code></pre>
+<p><strong>案例</strong>：Safe（前 Gnosis Safe）是目前最廣泛使用的多簽 Smart Contract Wallet，管理著超過 1000 億美元的鏈上資產。它要求 M-of-N 的簽名才能執行交易，大幅降低了單一金鑰被盜的風險。許多 DAO treasury、協議金庫、和機構投資者都使用 Safe 作為資產保管方案。</p>
+<h3 id="mpc-wallet"><a class="header" href="#mpc-wallet">MPC Wallet</a></h3>
+<p>MPC（Multi-Party Computation）Wallet 使用密碼學中的多方計算技術，將一把私鑰拆分為多個分片（key shares），分散存儲在不同的參與方。簽名時，各方使用自己的分片進行協同計算，產出合法的簽名，但<strong>完整的私鑰從未在任何單一地點被重建</strong>。</p>
+<p>與多簽合約不同，MPC 簽名在鏈上看起來就是一個普通的 ECDSA 簽名——Gas 成本與 EOA 相同，且不依賴特定鏈的智慧合約支持。這使得 MPC Wallet 天然具有跨鏈能力。</p>
+<pre><code class="language-text">MPC 簽名 vs 多簽合約比較：
+
+┌─────────────────────┬──────────────────┬────────────────────┐
+│                     │ MPC Wallet       │ Multisig Contract  │
+├─────────────────────┼──────────────────┼────────────────────┤
+│ 鏈上可見性          │ 普通 EOA 簽名    │ 合約呼叫           │
+│ Gas 成本            │ 與 EOA 相同      │ 較高 (合約執行)    │
+│ 跨鏈支持            │ 天然支持         │ 需每條鏈部署       │
+│ 金鑰恢復            │ 依賴分片備份     │ 合約可實作恢復     │
+│ 審計可見性          │ 鏈上不可見       │ 鏈上完全透明       │
+│ 適用場景            │ 交易所/機構      │ DAO/協議金庫       │
+└─────────────────────┴──────────────────┴────────────────────┘
+</code></pre>
+<p>主流 MPC 方案供應商包括 Fireblocks、Fordefi、Copper。需要注意的是，MPC 的安全性依賴於分片的分散保管——如果所有分片都存在同一家雲端供應商的不同帳號下，安全性並沒有本質提升。</p>
+<h3 id="hardware-wallet"><a class="header" href="#hardware-wallet">Hardware Wallet</a></h3>
+<p>Hardware Wallet（如 Ledger、Trezor）將私鑰儲存在專用的安全晶片（Secure Element）中。私鑰在晶片內生成，永遠不會離開晶片。所有簽名運算都在晶片內部完成，外部裝置只能向晶片發送「請簽名這份資料」的請求，並接收簽名結果。</p>
+<p>這種物理隔離提供了最強的私鑰保護——即使使用者的電腦被惡意軟體完全控制，攻擊者也無法提取私鑰。但 Hardware Wallet 的限制也很明顯：簽名速度慢（需要人工按鍵確認）、不適合高頻自動化交易、設備本身可能丟失或損壞。</p>
+<p><strong>最佳實踐</strong>：Hardware Wallet 最適合作為多簽方案中的一把 key，用於保護大額資產的冷存儲。將它與 MPC 或 Smart Contract Wallet 結合使用，可以兼顧安全性和便利性。</p>
+<hr />
+<h2 id="52-金鑰管理層級"><a class="header" href="#52-金鑰管理層級">5.2 金鑰管理層級</a></h2>
+<p>在企業級的資金管理系統中，不是所有的錢都應該放在同一個地方。根據資金用途、存取頻率和風險承受度，金鑰管理通常分為三個層級。</p>
+<h3 id="熱錢包hot-wallet"><a class="header" href="#熱錢包hot-wallet">熱錢包（Hot Wallet）</a></h3>
+<p>熱錢包的私鑰存在聯網的伺服器上，可以即時自動簽名。適合小額、高頻的操作，例如：交易所的使用者提幣（小額自動審核）、DApp 後端的 Gas 費支付、自動化做市策略的交易執行。</p>
+<p>熱錢包的風險最高——伺服器被入侵就等於私鑰被盜。因此，熱錢包中應該只保留業務運轉所需的最小資金量，並設定嚴格的單筆和單日轉帳上限。</p>
+<pre><code class="language-text">熱錢包安全防護架構：
+
+┌─────────────────────────────────────────┐
+│              Hot Wallet 環境             │
+│                                         │
+│  ┌──────────┐    ┌──────────────────┐   │
+│  │ Private  │    │ Policy Engine    │   │
+│  │ Key      │    │                  │   │
+│  │ (KMS/HSM)│    │ - 單筆上限: $5K │   │
+│  │          │    │ - 日額上限: $50K │   │
+│  └──────────┘    │ - 白名單地址     │   │
+│       │          │ - 速率限制       │   │
+│       v          └────────┬─────────┘   │
+│  ┌──────────┐             │             │
+│  │ Signer   │&lt;────────────┘             │
+│  │ Service  │  policy check passed      │
+│  └──────────┘                           │
+│                                         │
+│  監控: 餘額低於閾值 → 自動從溫錢包補充  │
+└─────────────────────────────────────────┘
+</code></pre>
+<h3 id="溫錢包warm-wallet"><a class="header" href="#溫錢包warm-wallet">溫錢包（Warm Wallet）</a></h3>
+<p>溫錢包介於熱與冷之間。私鑰可能存在受保護的環境中（如 HSM、AWS KMS、或 MPC 分片），但需要半自動的審核流程才能動用。典型場景：定期（例如每小時）從溫錢包向熱錢包補充資金、中等金額的轉帳需要 2/3 管理員審批。</p>
+<p>溫錢包的設計目標是在安全和效率之間取得平衡。它不像冷錢包那樣需要完全離線操作（耗時且不方便），但比熱錢包多了一層人工審核的保護。</p>
+<h3 id="冷錢包cold-wallet"><a class="header" href="#冷錢包cold-wallet">冷錢包（Cold Wallet）</a></h3>
+<p>冷錢包的私鑰完全離線——可能存在 Hardware Wallet 中、寫在紙上（paper wallet）、或存在離線電腦的加密分割區中。動用冷錢包需要完整的操作流程：在離線環境中簽名 → 將簽名後的交易透過 USB 或 QR Code 傳輸到聯網設備 → 廣播上鏈。</p>
+<pre><code class="language-text">三層金鑰管理架構：
+
+       安全性                        便利性
+        高                            低
+         │    ┌──────────────────┐     │
+         │    │  冷錢包          │     │
+         │    │  離線簽名        │     │
+         │    │  大額保管 (90%)  │     │
+         │    │  多簽 + 延遲     │     │
+         │    └────────┬─────────┘     │
+         │             │ (人工觸發)     │
+         │    ┌────────v─────────┐     │
+         │    │  溫錢包          │     │
+         │    │  半自動簽核      │     │
+         │    │  中額調度 (8%)   │     │
+         │    │  審批 + HSM      │     │
+         │    └────────┬─────────┘     │
+         │             │ (定時補充)     │
+         │    ┌────────v─────────┐     │
+         │    │  熱錢包          │     │
+         │    │  線上自動簽名    │     │
+         │    │  小額快取 (2%)   │     │
+         │    │  策略引擎限制    │     │
+         │    └──────────────────┘     │
+        低                            高
+</code></pre>
+<p><strong>案例</strong>：2022 年 Ronin Bridge 被盜 6.25 億美元，根本原因之一就是金鑰管理層級不當——9 把驗證者私鑰中有 4 把由同一個組織控制，且安全防護不足。攻擊者只需要突破一個組織的安全就能取得足夠的簽名門檻。這個事件深刻教訓了業界：多簽的 key 必須由真正獨立的實體持有，否則「多簽」只是形式。</p>
+<hr />
+<h2 id="53-簽名流程"><a class="header" href="#53-簽名流程">5.3 簽名流程</a></h2>
+<p>一筆交易從使用者意圖到最終上鏈，需要經過多個關卡。完善的簽名流程不是「收到請求就簽」，而是一個包含策略檢查、模擬驗證和風控攔截的完整流水線。</p>
+<pre><code class="language-text">完整簽名流程：
+
+User Intent (使用者意圖)
+   |
+   v
+┌──────────────────────────────────────────────┐
+│ 1. Policy Engine (策略引擎)                   │
+│    - 額度檢查: 單筆/單日是否超限?             │
+│    - 白名單檢查: 目標地址是否在許可名單?      │
+│    - 時間窗檢查: 是否在允許的操作時間內?       │
+│    - 頻率檢查: 短時間內是否異常密集?           │
+│    - 合規檢查: 目標地址是否被制裁?             │
+│                                               │
+│    結果: Allow / Deny / Require Approval       │
+└──────────────────────┬───────────────────────┘
+                       │ (Allow)
+                       v
+┌──────────────────────────────────────────────┐
+│ 2. Transaction Builder (交易建構)             │
+│    - 設定 nonce (避免重複或跳號)               │
+│    - 估算 Gas (eth_estimateGas)               │
+│    - 編碼 calldata (ABI encoding)             │
+│    - 設定 EIP-1559 費用參數                    │
+└──────────────────────┬───────────────────────┘
+                       │
+                       v
+┌──────────────────────────────────────────────┐
+│ 3. Simulation (交易模擬)                      │
+│    - eth_call 模擬執行結果                     │
+│    - 預測 token 餘額變化                       │
+│    - 檢查是否會 revert                         │
+│    - 估算實際 Gas 消耗                         │
+│    - 第三方模擬 (Tenderly / Blocknative)       │
+└──────────────────────┬───────────────────────┘
+                       │
+                       v
+┌──────────────────────────────────────────────┐
+│ 4. Risk Check (風控檢查)                      │
+│    - 模擬結果是否符合預期?                     │
+│    - 滑點是否在容忍範圍內?                     │
+│    - 是否涉及已知的釣魚合約?                   │
+│    - Gas 費是否異常高?                         │
+└──────────────────────┬───────────────────────┘
+                       │ (Pass)
+                       v
+┌──────────────────────────────────────────────┐
+│ 5. Signer (簽名)                              │
+│    - EOA: 直接 ECDSA 簽名                     │
+│    - MPC: 協同計算產出簽名                     │
+│    - Multisig: 收集 M-of-N 簽名               │
+│    - Hardware: 傳送到硬體設備簽名              │
+└──────────────────────┬───────────────────────┘
+                       │
+                       v
+┌──────────────────────────────────────────────┐
+│ 6. Broadcast &amp; Monitor (廣播與追蹤)           │
+│    - 送入 mempool 或私有通道                   │
+│    - 監控 pending → included → confirmed      │
+│    - 必要時 speed up (重送更高 Gas)            │
+│    - 必要時 cancel (送同 nonce 的空交易)       │
+└──────────────────────────────────────────────┘
+</code></pre>
+<h3 id="nonce-管理的工程細節"><a class="header" href="#nonce-管理的工程細節">Nonce 管理的工程細節</a></h3>
+<p>Nonce 是帳戶的交易序號，從 0 開始，每筆成功交易加 1。Nonce 管理是交易系統中最容易出問題的地方之一。</p>
+<pre><code class="language-python"># Pseudocode: Nonce Manager with Local Tracking
+class NonceManager:
+    def __init__(self, address, rpc):
+        self.address = address
+        self.rpc = rpc
+        self.local_nonce = None
+        self.lock = asyncio.Lock()
+
+    async def get_next_nonce(self):
+        async with self.lock:
+            if self.local_nonce is None:
+                # 初始化: 從鏈上取得 pending nonce
+                self.local_nonce = await self.rpc.get_transaction_count(
+                    self.address, "pending"
+                )
+            else:
+                self.local_nonce += 1
+            return self.local_nonce
+
+    async def reset_nonce(self):
+        """當交易被 drop 或系統重啟時，重新從鏈上同步"""
+        async with self.lock:
+            self.local_nonce = None
+</code></pre>
+<p><strong>常見陷阱</strong>：</p>
+<ul>
+<li><strong>Nonce 跳號</strong>：如果 nonce=5 的交易被 drop，nonce=6 及以後的交易都會卡住。解法是重新發送 nonce=5 的交易（可以是原交易或空交易）。</li>
+<li><strong>並發衝突</strong>：多個線程同時取得相同 nonce，只有一筆會成功。解法是使用 mutex lock 或 nonce 分配器。</li>
+<li><strong>系統重啟</strong>：重啟後本地 nonce 計數器歸零，必須從鏈上重新同步 pending nonce。</li>
+</ul>
+<hr />
 <h2 id="54-常見錯誤"><a class="header" href="#54-常見錯誤">5.4 常見錯誤</a></h2>
+<h3 id="未綁定-chain-id-導致-replay-風險"><a class="header" href="#未綁定-chain-id-導致-replay-風險">未綁定 Chain ID 導致 Replay 風險</a></h3>
+<p>Chain ID 是區分不同區塊鏈網路的標識符（Ethereum Mainnet = 1, Polygon = 137, Arbitrum = 42161）。EIP-155 要求交易簽名中包含 chain ID，以防止同一筆簽名在不同鏈上被重播。</p>
+<p>如果你的簽名程式碼沒有正確綁定 chain ID，攻擊者可以將你在測試網上簽的交易拿到主網重播（前提是地址和 nonce 匹配）。在多鏈環境中（你的系統同時支援 Ethereum、Polygon、Arbitrum），這個風險尤其顯著。</p>
+<pre><code class="language-text">Replay Attack 範例：
+
+  使用者在 Goerli 測試網簽署一筆 1 ETH 轉帳
+  簽名中未包含 chain ID
+       |
+       v
+  攻擊者取得簽名後的交易原始資料
+       |
+       v
+  在 Ethereum Mainnet 廣播相同交易
+       |
+       v
+  如果 nonce 和餘額匹配 → 交易成功執行
+  使用者損失 1 ETH (主網)
+
+  防禦: 永遠在簽名中包含 chain ID (EIP-155)
+</code></pre>
+<h3 id="盲簽blind-signing未驗證-calldata"><a class="header" href="#盲簽blind-signing未驗證-calldata">盲簽（Blind Signing）未驗證 Calldata</a></h3>
+<p>盲簽是指簽名者在不理解交易內容的情況下直接簽名。這在技術上等同於簽了一份你沒讀過的合約。常見場景：Hardware Wallet 的螢幕太小，只顯示「確認交易？」而不顯示完整的交易內容；後端服務自動簽名時沒有解碼和驗證 calldata。</p>
+<p>攻擊者可以構造一筆看似正常但實際將所有代幣 approve 給攻擊者地址的交易。如果簽名者未驗證 calldata 就盲簽，資產就會被盜。</p>
+<p><strong>防禦措施</strong>：在簽名前，對 calldata 進行 ABI 解碼，將函式名稱和參數以人類可讀的形式呈現給簽名者確認。使用 EIP-712 typed data 進行結構化簽名，讓簽名者能清楚看到自己在簽什麼。</p>
+<h3 id="權限分離不足"><a class="header" href="#權限分離不足">權限分離不足</a></h3>
+<p>很多團隊在早期為了開發方便，讓營運帳號（用於部署合約、調參數）同時也是資金管理帳號。這意味著一個營運工程師的機器被入侵，就可以直接轉走金庫中的所有資金。</p>
+<p>正確的做法是嚴格分離角色：</p>
 <ul>
-<li>未綁 chain id 導致 replay 風險</li>
-<li>盲簽（blind signing）未驗證 calldata</li>
-<li>權限分離不足，營運帳號可直接簽資金交易</li>
+<li><strong>部署者帳號</strong>：只有部署合約的權限，無法操作資金</li>
+<li><strong>管理者帳號</strong>：只能修改合約參數（如費率、白名單），使用 Timelock</li>
+<li><strong>資金帳號</strong>：多簽控制，任何轉帳需要多方審批</li>
 </ul>
+<pre><code class="language-text">權限分離架構：
+
+  ┌────────────┐   ┌────────────┐   ┌────────────┐
+  │ Deployer   │   │ Admin      │   │ Treasury   │
+  │ (1-of-1)   │   │ (2-of-3)   │   │ (3-of-5)   │
+  └─────┬──────┘   └─────┬──────┘   └─────┬──────┘
+        │                │                │
+        v                v                v
+   部署合約         修改參數          資金轉移
+   (一次性)      (Timelock 48h)    (多簽 + 延遲)
+</code></pre>
+<hr />
 <h2 id="55-防護實務"><a class="header" href="#55-防護實務">5.5 防護實務</a></h2>
-<ul>
-<li>EIP-712 typed data</li>
-<li>簽名前可視化解碼與模擬</li>
-<li>資金動作必須多簽 + 延遲 + 監控</li>
-</ul>
-<h2 id="白話說明"><a class="header" href="#白話說明">白話說明</a></h2>
-<p>錢包不是 UI，而是你的「簽章控制系統」。私鑰一旦失守，鏈上資產通常不可逆追回。</p>
+<h3 id="eip-712-typed-data"><a class="header" href="#eip-712-typed-data">EIP-712 Typed Data</a></h3>
+<p>EIP-712 定義了一套結構化資料簽名的標準。與直接簽名原始 bytes 不同，EIP-712 要求將待簽資料組織成具有明確類型定義的結構體，並包含 domain separator（域分隔符）以防止跨合約重播。</p>
+<pre><code class="language-solidity">// EIP-712 Typed Data 範例 (Solidity)
+bytes32 constant PERMIT_TYPEHASH = keccak256(
+    "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+);
+
+// Domain Separator 包含:
+// - name: 合約名稱
+// - version: 版本
+// - chainId: 鏈 ID
+// - verifyingContract: 合約地址
+bytes32 DOMAIN_SEPARATOR = keccak256(abi.encode(
+    keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+    keccak256("MyToken"),
+    keccak256("1"),
+    block.chainid,
+    address(this)
+));
+</code></pre>
+<p>錢包（如 MetaMask）會將 EIP-712 的結構化資料以人類可讀的形式呈現給使用者，而非一串不明所以的 hex 字串。這大幅降低了盲簽風險。</p>
+<h3 id="簽名前可視化解碼與模擬"><a class="header" href="#簽名前可視化解碼與模擬">簽名前可視化解碼與模擬</a></h3>
+<p>在簽名之前，應該對交易進行兩層驗證：</p>
+<ol>
+<li><strong>靜態解碼</strong>：將 calldata 用 ABI 解碼，顯示函式名稱和參數。例如：<code>transfer(0xAbC..., 1000000)</code> → 「轉帳 1 USDC 到地址 0xAbC...」</li>
+<li><strong>動態模擬</strong>：使用 <code>eth_call</code> 或第三方模擬服務（Tenderly、Blowfish）模擬交易執行結果，預測代幣餘額的變化、顯示潛在的風險提示</li>
+</ol>
+<pre><code class="language-text">簽名前驗證流程：
+
+  原始交易:
+    to: 0x1234...
+    data: 0xa9059cbb000000000000000000000000abcdef...00000000000000000000000000000f4240
+
+  靜態解碼:
+    函式: transfer(address to, uint256 amount)
+    參數: to = 0xAbCdEf...
+          amount = 1000000 (= 1 USDC, 6 decimals)
+
+  動態模擬:
+    發送者 USDC 餘額: 5000 → 4999
+    接收者 USDC 餘額: 100 → 101
+    Gas 消耗: ~65,000
+    風險等級: 低 ✓
+
+  ↓ 驗證通過後才送給 Signer
+</code></pre>
+<h3 id="資金動作必須多簽--延遲--監控"><a class="header" href="#資金動作必須多簽--延遲--監控">資金動作必須多簽 + 延遲 + 監控</a></h3>
+<p>對於涉及大額資金的操作（金庫提領、合約升級、參數修改），應該實施三層防護：</p>
+<ol>
+<li><strong>多簽（Multisig）</strong>：至少 3/5 或 4/7 的簽名才能執行</li>
+<li><strong>時間鎖（Timelock）</strong>：交易提交後需要等待一段時間（如 24-48 小時）才能執行，給團隊足夠的時間檢查和取消可疑操作</li>
+<li><strong>即時監控</strong>：所有大額操作應觸發即時告警（Telegram Bot、Slack、PagerDuty），安全團隊可以在 timelock 期間審查並決定是否取消</li>
+</ol>
+<pre><code class="language-text">大額資金操作防護流水線：
+
+  提交交易 → Multisig 收集簽名 (3/5)
+                    │
+                    v
+            Timelock Queue (48h 等待)
+                    │
+                    ├── 期間: 監控系統告警通知安全團隊
+                    ├── 期間: 社群可檢視待執行操作
+                    ├── 如可疑: Guardian 可取消交易
+                    │
+                    v (48h 後)
+            Execute 執行交易
+                    │
+                    v
+            事後審計 + 日誌記錄
+</code></pre>
+<p><strong>案例</strong>：許多 DeFi 協議的重大安全事件都發生在合約升級環節。Timelock 的設計目的就是為了給社群和安全研究者一個「緩衝期」——如果升級的新合約包含惡意邏輯，在 timelock 期間就會被發現和阻止。</p>
+<hr />
+<h2 id="白話總結"><a class="header" href="#白話總結">白話總結</a></h2>
+<p>錢包不是一個存錢的 App，它的本質是控制私鑰的系統——誰控制了私鑰，誰就控制了鏈上的資產。EOA 最簡單但風險最大，一把 key 丟了或洩漏就什麼都沒了。Smart Contract Wallet 可以加上多簽、額度限制、社交恢復等機制，是目前 Web3 UX 改善的主力方向。MPC Wallet 把私鑰拆成碎片分散保管，適合交易所和機構使用。在企業環境中，資金必須按照熱、溫、冷三層管理：日常營運用的小錢放熱錢包（自動簽名），中等金額放溫錢包（半自動審批），大額資產放冷錢包（離線多簽）。簽名不是收到請求就直接簽——正確的流程是先過策略引擎（檢查額度、白名單、時間窗），再模擬交易結果（確認不會 revert、不會被釣魚），最後才交給 Signer 簽名。最後，永遠記得三件事：綁定 chain ID 防止跨鏈重播、解碼 calldata 拒絕盲簽、大額操作必須多簽加時間鎖加監控。</p>
 
                     </main>
 

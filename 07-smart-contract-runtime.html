@@ -179,48 +179,367 @@
                     <main>
                         <h1 id="7-智能合約執行模型"><a class="header" href="#7-智能合約執行模型">7. 智能合約執行模型</a></h1>
 <h2 id="71-合約生命週期"><a class="header" href="#71-合約生命週期">7.1 合約生命週期</a></h2>
+<p>智能合約的生命週期可以類比為傳統軟體工程中的 SDLC（Software Development Life Cycle），但有一個根本性差異：<strong>合約一旦部署上鏈，其程式碼就是不可變的</strong>（除非使用 Proxy 升級模式）。這意味著每一個階段都必須比傳統開發更加謹慎，因為修復錯誤的成本極高——不僅是技術成本，更可能涉及真金白銀的損失。</p>
+<h3 id="設計階段"><a class="header" href="#設計階段">設計階段</a></h3>
+<p>設計階段是整個生命週期中最關鍵的環節。工程師需要明確定義以下三個核心要素：</p>
 <ul>
-<li>設計: 規格、狀態機、權限模型</li>
-<li>開發: 單元測試、fuzz、invariant</li>
-<li>審計: 靜態/動態/人工</li>
-<li>部署: 分環境、權限最小化</li>
-<li>維運: 升級治理、監控、應急</li>
+<li><strong>規格（Specification）</strong>：合約要解決什麼問題？接受哪些輸入？產出哪些狀態變更？建議使用 NatSpec 格式撰寫函式規格，讓文件與程式碼緊密結合。</li>
+<li><strong>狀態機（State Machine）</strong>：合約中的狀態轉換必須明確建模。例如一個眾籌合約可能有 <code>Funding -&gt; GoalReached -&gt; Withdrawn</code> 或 <code>Funding -&gt; Failed -&gt; Refunded</code> 兩條路徑，每個狀態轉換都必須定義清楚的觸發條件與前置檢查。</li>
+<li><strong>權限模型（Access Control）</strong>：誰能呼叫哪些函式？使用 Role-Based Access Control（RBAC）還是簡單的 <code>onlyOwner</code>？權限模型的設計直接決定了合約的安全邊界。</li>
 </ul>
-<h2 id="72-常見架構"><a class="header" href="#72-常見架構">7.2 常見架構</a></h2>
-<ul>
-<li>Monolith: 單合約簡單快速</li>
-<li>Modular: Router + Vault + Library</li>
-<li>Proxy Upgrade: UUPS/Transparent/Beacon</li>
-</ul>
-<h2 id="73-重要安全議題"><a class="header" href="#73-重要安全議題">7.3 重要安全議題</a></h2>
-<ul>
-<li>Reentrancy</li>
-<li>Access control 錯配</li>
-<li>Delegatecall 汙染</li>
-<li>Storage slot 衝突（升級）</li>
-<li>Oracle 操縱</li>
-</ul>
-<h2 id="74-執行流程圖"><a class="header" href="#74-執行流程圖">7.4 執行流程圖</a></h2>
-<pre><code class="language-text">External Call
-   |
-   v
-Function Selector -&gt; Modifier Check -&gt; Business Logic
-   |                                      |
-   |                                      +-&gt; External Interaction
-   |                                      |
-   +-&gt; State Read/Write &lt;-----------------+
-                |
-                v
-              Event Log
+<pre><code class="language-text">合約狀態機範例（簡化的眾籌合約）：
+
+    ┌──────────┐   達標    ┌──────────────┐   owner提款   ┌────────────┐
+    │ Funding  │─────────&gt;│ GoalReached  │────────────&gt;│ Withdrawn  │
+    └──────────┘          └──────────────┘             └────────────┘
+         │
+         │ 超時未達標
+         v
+    ┌──────────┐   用戶退款  ┌────────────┐
+    │  Failed  │──────────&gt;│  Refunded  │
+    └──────────┘           └────────────┘
 </code></pre>
-<h2 id="75-最小權限設計"><a class="header" href="#75-最小權限設計">7.5 最小權限設計</a></h2>
+<h3 id="開發階段"><a class="header" href="#開發階段">開發階段</a></h3>
+<p>開發階段遵循 TDD 原則，測試策略分為三個層次：</p>
 <ul>
-<li><code>owner</code> 不直接掌資金，改由 Treasury Multisig</li>
-<li>管理操作進 Timelock</li>
-<li><code>pause</code> 與 <code>unpause</code> 分離角色</li>
+<li><strong>單元測試（Unit Test）</strong>：針對每個函式的邏輯正確性。使用 Foundry 的 <code>forge test</code> 或 Hardhat 的測試框架，覆蓋率應達 95% 以上。重點測試邊界條件，例如 <code>uint256</code> 的溢位、零地址輸入、空陣列等。</li>
+<li><strong>Fuzz Testing</strong>：讓測試框架隨機產生輸入值，嘗試找出人類測試者不會想到的邊界條件。Foundry 原生支援 fuzz testing，只需在測試函式的參數中加入變數即可。一般建議至少跑 10,000 輪 fuzz。</li>
+<li><strong>Invariant Testing</strong>：定義系統中「永遠不應被違反」的不變量。例如「Vault 合約的總餘額永遠等於所有用戶存款之和」。Invariant testing 會在隨機操作序列後檢查這些不變量是否仍然成立。</li>
 </ul>
-<h2 id="白話說明"><a class="header" href="#白話說明">白話說明</a></h2>
-<p>合約一上鏈就很難改，請把它當成「不可熱修」的核心交易引擎。</p>
+<pre><code class="language-solidity">// Foundry Fuzz Test 範例
+function testFuzz_deposit(uint256 amount) public {
+    // 限制輸入範圍
+    amount = bound(amount, 1, type(uint128).max);
+
+    token.mint(user, amount);
+    vm.prank(user);
+    token.approve(address(vault), amount);
+
+    vm.prank(user);
+    vault.deposit(amount);
+
+    // 不變量：用戶存款後餘額正確
+    assertEq(vault.balanceOf(user), amount);
+    assertEq(token.balanceOf(address(vault)), amount);
+}
+</code></pre>
+<h3 id="審計階段"><a class="header" href="#審計階段">審計階段</a></h3>
+<p>審計是部署前的最後防線，通常結合三種方法：</p>
+<ul>
+<li><strong>靜態分析（Static Analysis）</strong>：使用工具如 Slither、Mythril 自動掃描常見漏洞模式。靜態分析能快速發現 reentrancy、未檢查的外部呼叫回傳值等問題，但容易產生 false positive。</li>
+<li><strong>動態分析（Dynamic Analysis）</strong>：實際執行合約並監控行為，包含 symbolic execution（符號執行）。工具如 Echidna（基於 property-based testing）能發現靜態分析無法觸及的路徑問題。</li>
+<li><strong>人工審計（Manual Audit）</strong>：由經驗豐富的安全研究員逐行檢視程式碼。重點關注業務邏輯的正確性、經濟模型的可操縱性、以及各模組間的交互風險。一份完整的人工審計通常需要 2-4 週。</li>
+</ul>
+<p><strong>最佳實踐</strong>：在審計前先跑完靜態分析並修復所有 high/medium 級別的問題，讓人工審計師能專注在更深層的邏輯問題上。</p>
+<h3 id="部署階段"><a class="header" href="#部署階段">部署階段</a></h3>
+<p>部署不僅僅是把合約放上鏈，更重要的是環境管理與權限配置：</p>
+<ul>
+<li><strong>分環境部署</strong>：Testnet（Sepolia/Goerli）→ Staging（Mainnet fork）→ Mainnet。每個環境都要跑完整測試套件。使用 Foundry 的 <code>forge script</code> 搭配 <code>--fork-url</code> 可以在 mainnet fork 上模擬真實部署。</li>
+<li><strong>權限最小化</strong>：部署完成後立即將 owner 轉移到 multisig，而非留在部署者的 EOA。初始化函式只能呼叫一次，必須加上 <code>initializer</code> modifier。</li>
+<li><strong>驗證合約原始碼</strong>：在 Etherscan 上驗證原始碼，讓社群能審查已部署的程式碼與審計報告是否一致。</li>
+</ul>
+<h3 id="維運階段"><a class="header" href="#維運階段">維運階段</a></h3>
+<p>合約上鏈後的維運工作同樣關鍵：</p>
+<ul>
+<li><strong>升級治理</strong>：如果使用 Proxy 模式，升級流程必須經過 Timelock（通常 24-48 小時延遲）和多簽核准。社群應有足夠時間審視升級內容。</li>
+<li><strong>監控（Monitoring）</strong>：使用 Tenderly、Forta 或自建監控系統，追蹤異常交易模式。例如：大額轉帳、短時間內大量清算、合約餘額驟降等。</li>
+<li><strong>應急處理（Incident Response）</strong>：預先定義 <code>pause()</code> 機制和緊急撤資路徑。建議維護一份 War Room Playbook，明確列出各種緊急情境的處理步驟和負責人。</li>
+</ul>
+<pre><code class="language-text">維運監控架構：
+
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│  On-chain   │────&gt;│  Event       │────&gt;│  Alert      │
+│  Contract   │     │  Indexer     │     │  System     │
+└─────────────┘     └──────────────┘     └─────────────┘
+                          │                     │
+                          v                     v
+                    ┌──────────────┐     ┌─────────────┐
+                    │  Dashboard   │     │  PagerDuty  │
+                    │  (Grafana)   │     │  / Slack    │
+                    └──────────────┘     └─────────────┘
+</code></pre>
+<h2 id="72-常見架構"><a class="header" href="#72-常見架構">7.2 常見架構</a></h2>
+<p>智能合約的架構設計直接影響可維護性、升級彈性和安全性。選擇架構時需要權衡複雜度與靈活性。</p>
+<h3 id="monolith單體合約"><a class="header" href="#monolith單體合約">Monolith（單體合約）</a></h3>
+<p>最簡單的架構模式，所有邏輯集中在一個合約中。適用於功能單純、不需要升級的場景，例如一次性的 Token Sale 合約或簡單的 NFT Mint 合約。</p>
+<p><strong>優點</strong>：</p>
+<ul>
+<li>部署簡單，gas 成本低（只需部署一個合約）</li>
+<li>程式碼易於理解，審計成本低</li>
+<li>沒有跨合約呼叫的複雜性</li>
+</ul>
+<p><strong>缺點</strong>：</p>
+<ul>
+<li>一旦部署無法修改任何邏輯</li>
+<li>合約大小受限於 EIP-170 的 24KB 限制</li>
+<li>功能耦合度高，難以復用</li>
+</ul>
+<p><strong>適用場景</strong>：Token 合約（ERC-20/721）、簡單的 Escrow、一次性活動合約。</p>
+<h3 id="modular模組化架構"><a class="header" href="#modular模組化架構">Modular（模組化架構）</a></h3>
+<p>將合約拆分為多個獨立模組，透過 Router（路由器）統一入口，Vault（金庫）管理資金，Library（函式庫）提供共用邏輯。這是中大型 DeFi 協議最常見的架構。</p>
+<pre><code class="language-text">模組化架構圖：
+
+                    ┌──────────────────┐
+                    │     Router       │
+                    │  (Entry Point)   │
+                    └────────┬─────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+              v              v              v
+       ┌────────────┐ ┌───────────┐ ┌────────────┐
+       │   Module A  │ │  Module B │ │  Module C  │
+       │  (Trading)  │ │ (Lending) │ │ (Staking)  │
+       └──────┬─────┘ └─────┬─────┘ └──────┬─────┘
+              │              │              │
+              └──────────────┼──────────────┘
+                             │
+                      ┌──────v──────┐
+                      │    Vault    │
+                      │  (Treasury) │
+                      └──────┬──────┘
+                             │
+                      ┌──────v──────┐
+                      │   Library   │
+                      │  (Math/    │
+                      │   Utils)    │
+                      └─────────────┘
+</code></pre>
+<p><strong>真實案例</strong>：Uniswap V4 使用 Singleton 模式將所有流動性池集中在一個合約中，但透過 Hooks 機制實現模組化的自定義邏輯。GMX V2 則使用 Router + DataStore + Handler 的模組化設計，將資料儲存、業務邏輯和入口路由完全分離。</p>
+<h3 id="proxy-upgrade代理升級模式"><a class="header" href="#proxy-upgrade代理升級模式">Proxy Upgrade（代理升級模式）</a></h3>
+<p>透過將「狀態儲存」和「邏輯執行」分離，實現合約可升級性。使用者始終與 Proxy 合約互動，Proxy 透過 <code>delegatecall</code> 將呼叫轉發到 Implementation（實作合約）。</p>
+<p>三種主要的 Proxy 模式：</p>
+<div class="table-wrapper"><table><thead><tr><th>模式</th><th>升級邏輯位置</th><th>優點</th><th>缺點</th></tr></thead><tbody>
+<tr><td><strong>Transparent Proxy</strong></td><td>Proxy 合約</td><td>明確分離 admin/user 呼叫</td><td>Gas 稍高（每次檢查 caller）</td></tr>
+<tr><td><strong>UUPS</strong></td><td>Implementation 合約</td><td>Gas 更低、更靈活</td><td>如果忘記在新版本保留升級函式則永久鎖死</td></tr>
+<tr><td><strong>Beacon Proxy</strong></td><td>Beacon 合約</td><td>多個 Proxy 共享一個 Implementation</td><td>增加一層間接層</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-solidity">// UUPS Proxy 升級流程虛擬碼
+contract MyContractV1 is UUPSUpgradeable {
+    uint256 public value;
+
+    function initialize(uint256 _value) public initializer {
+        value = _value;
+    }
+
+    // 注意：如果 V2 忘記實作這個函式，合約將永遠無法再升級
+    function _authorizeUpgrade(address newImpl) internal override onlyOwner {}
+}
+
+contract MyContractV2 is UUPSUpgradeable {
+    uint256 public value;
+    uint256 public newFeature;  // 只能新增 storage variable，不能修改既有的
+
+    function _authorizeUpgrade(address newImpl) internal override onlyOwner {}
+}
+</code></pre>
+<p><strong>常見陷阱</strong>：在升級時改變既有 storage variable 的順序或型別會導致 storage collision，這是最危險的 Proxy 相關漏洞之一。務必使用 OpenZeppelin 的 <code>@openzeppelin/upgrades</code> 套件來自動檢測 storage layout 衝突。</p>
+<h2 id="73-重要安全議題"><a class="header" href="#73-重要安全議題">7.3 重要安全議題</a></h2>
+<p>智能合約的安全問題可以粗略分為「程式碼層面」和「設計層面」兩類。以下列出最常見且損失最慘重的五大安全議題。</p>
+<h3 id="reentrancy重入攻擊"><a class="header" href="#reentrancy重入攻擊">Reentrancy（重入攻擊）</a></h3>
+<p>Reentrancy 是智能合約安全史上最具代表性的漏洞，2016 年的 The DAO 事件因此損失約 360 萬 ETH（當時價值約 6,000 萬美元）。攻擊原理是在合約將資金轉出後、但尚未更新狀態變數之前，攻擊者透過 fallback function 再次呼叫提款函式。</p>
+<pre><code class="language-solidity">// ❌ 有漏洞的寫法
+function withdraw(uint256 amount) external {
+    require(balances[msg.sender] &gt;= amount);
+    (bool ok, ) = msg.sender.call{value: amount}("");  // 1. 先轉帳
+    require(ok);
+    balances[msg.sender] -= amount;  // 2. 才更新狀態 → 攻擊者可在步驟1重入
+}
+
+// ✅ 安全的寫法（Checks-Effects-Interactions 模式）
+function withdraw(uint256 amount) external nonReentrant {
+    require(balances[msg.sender] &gt;= amount);  // Check
+    balances[msg.sender] -= amount;           // Effect（先更新狀態）
+    (bool ok, ) = msg.sender.call{value: amount}("");  // Interaction（最後才外部互動）
+    require(ok);
+}
+</code></pre>
+<p><strong>防禦策略</strong>：</p>
+<ol>
+<li>遵循 CEI（Checks-Effects-Interactions）模式</li>
+<li>使用 OpenZeppelin 的 <code>ReentrancyGuard</code>（<code>nonReentrant</code> modifier）</li>
+<li>在跨合約呼叫時特別注意 read-only reentrancy（攻擊者重入的是另一個合約的 view function，讀到過時的狀態）</li>
+</ol>
+<h3 id="access-control-錯配"><a class="header" href="#access-control-錯配">Access Control 錯配</a></h3>
+<p>權限控制的錯誤配置是最常見的漏洞類型之一。常見情境包括：忘記給關鍵函式加上權限修飾器、<code>initialize()</code> 函式沒有加上 <code>initializer</code> modifier 導致任何人可以重新初始化、以及權限轉移過程中的空窗期。</p>
+<p><strong>真實案例</strong>：2022 年 Wintermute 事件中，某合約的 <code>initialize()</code> 函式在部署後未被呼叫，攻擊者搶先呼叫並將自己設為 owner，盜走了 1.6 億美元。</p>
+<p><strong>最佳實踐</strong>：使用 OpenZeppelin 的 <code>AccessControl</code> 而非手寫 <code>onlyOwner</code>。為每個敏感操作定義明確的 role（例如 <code>MINTER_ROLE</code>、<code>PAUSER_ROLE</code>、<code>UPGRADER_ROLE</code>），並在部署腳本中驗證所有 role 的分配。</p>
+<h3 id="delegatecall-汙染"><a class="header" href="#delegatecall-汙染">Delegatecall 汙染</a></h3>
+<p><code>delegatecall</code> 是 Proxy 模式的核心機制，它讓被呼叫合約的程式碼在呼叫者的 storage context 中執行。如果被 delegatecall 的目標合約被惡意替換，或目標合約本身有寫入 storage 的行為，就會汙染 Proxy 合約的狀態。</p>
+<pre><code class="language-text">Delegatecall 執行模型：
+
+Proxy Contract (Storage)          Implementation Contract (Logic)
+┌──────────────────────┐          ┌──────────────────────┐
+│ slot 0: owner        │  ←───── │ slot 0: owner        │
+│ slot 1: balance      │  ←───── │ slot 1: balance      │
+│ slot 2: impl address │         │                      │
+└──────────────────────┘          └──────────────────────┘
+        ↑                                  ↑
+        │ storage 存在 Proxy                │ 邏輯定義在 Implementation
+        │ 但 delegatecall 讓               │ 但在 Proxy 的 context 執行
+        │ Implementation 的程式碼            │
+        │ 操作 Proxy 的 storage             │
+</code></pre>
+<p><strong>防禦策略</strong>：Implementation 合約的 constructor 中呼叫 <code>_disableInitializers()</code> 防止直接初始化。確保 Proxy 和 Implementation 的 storage layout 完全一致。</p>
+<h3 id="storage-slot-衝突升級相關"><a class="header" href="#storage-slot-衝突升級相關">Storage Slot 衝突（升級相關）</a></h3>
+<p>在合約升級時，新版本的 Implementation 合約必須保持與舊版本完全相同的 storage layout。如果在已有的 storage variable 之間插入新變數，或改變變數型別，將導致資料讀取錯位。</p>
+<pre><code class="language-solidity">// V1
+contract MyContractV1 {
+    uint256 public totalSupply;    // slot 0
+    address public owner;          // slot 1
+}
+
+// ❌ 錯誤的 V2（插入新變數到中間）
+contract MyContractV2 {
+    uint256 public totalSupply;    // slot 0
+    uint256 public newVariable;    // slot 1 ← 衝突！原本 owner 在這裡
+    address public owner;          // slot 2 ← 讀到的是垃圾資料
+}
+
+// ✅ 正確的 V2（只在最後新增）
+contract MyContractV2 {
+    uint256 public totalSupply;    // slot 0
+    address public owner;          // slot 1（保持不變）
+    uint256 public newVariable;    // slot 2（新增在最後）
+}
+</code></pre>
+<p><strong>最佳實踐</strong>：使用 OpenZeppelin 的 <code>forge inspect</code> 或 <code>hardhat-upgrades</code> 的 storage layout 比對功能，在升級前自動檢測衝突。考慮使用 EIP-7201（Namespaced Storage Layout）來避免 storage collision。</p>
+<h3 id="oracle-操縱"><a class="header" href="#oracle-操縱">Oracle 操縱</a></h3>
+<p>DeFi 協議高度依賴 Oracle（預言機）提供鏈外資料（價格、利率等）。如果 Oracle 回傳的價格可以被操縱，攻擊者就能以不合理的價格執行交易、清算或鑄造資產。</p>
+<p><strong>常見攻擊手法</strong>：</p>
+<ul>
+<li><strong>閃電貸操縱 AMM 價格</strong>：攻擊者用閃電貸大量買入某 Token，推高 AMM 的即時價格，利用被操縱的價格在借貸協議中超額借貸，然後歸還閃電貸。</li>
+<li><strong>TWAP Oracle 延遲利用</strong>：Time-Weighted Average Price 雖然比即時價格更難操縱，但在市場劇烈波動時會有延遲，攻擊者可以利用這個價差。</li>
+</ul>
+<p><strong>防禦策略</strong>：使用 Chainlink 等去中心化 Oracle 網路、設定價格偏差閾值（例如單一區塊內價格變化超過 10% 則拒絕交易）、結合多個 Oracle 來源做交叉驗證。</p>
+<h2 id="74-執行流程圖"><a class="header" href="#74-執行流程圖">7.4 執行流程圖</a></h2>
+<p>理解智能合約的執行流程對於除錯和安全分析至關重要。以下是一筆典型的合約呼叫從進入到完成的完整流程：</p>
+<pre><code class="language-text">                         External Call (tx or internal call)
+                                    │
+                                    v
+                        ┌───────────────────────┐
+                        │   Receive ETH?         │
+                        │   (msg.value &gt; 0 &amp;&amp;    │
+                        │    no calldata)         │
+                        └───────┬────────┬───────┘
+                           Yes  │        │  No
+                                v        v
+                        ┌──────────┐  ┌──────────────────────┐
+                        │ receive()│  │ Function Selector     │
+                        │ /fallback│  │ (first 4 bytes of     │
+                        └──────────┘  │  keccak256(signature))│
+                                      └──────────┬───────────┘
+                                                  │
+                                                  v
+                                      ┌──────────────────────┐
+                                      │ Modifier Chain       │
+                                      │ (onlyOwner,          │
+                                      │  nonReentrant,       │
+                                      │  whenNotPaused...)   │
+                                      └──────────┬───────────┘
+                                                  │
+                                                  v
+                                      ┌──────────────────────┐
+                                      │ Business Logic       │
+                                      │ (require checks,     │
+                                      │  state mutations,    │
+                                      │  calculations)       │
+                                      └──────────┬───────────┘
+                                                  │
+                              ┌────────────────────┼────────────────────┐
+                              │                    │                    │
+                              v                    v                    v
+                    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+                    │ State Write  │    │ External     │    │ Event Emit   │
+                    │ (SSTORE)     │    │ Interaction  │    │ (LOG0-LOG4)  │
+                    │              │    │ (CALL/       │    │              │
+                    │ 每個 slot    │    │  DELEGATECALL│    │ 用於鏈下     │
+                    │ 首次寫入     │    │  /STATICCALL)│    │ indexing     │
+                    │ 20,000 gas   │    │              │    │              │
+                    └──────────────┘    └──────────────┘    └──────────────┘
+</code></pre>
+<h3 id="gas-成本剖析"><a class="header" href="#gas-成本剖析">Gas 成本剖析</a></h3>
+<p>理解 EVM 的 gas 成本模型對於撰寫高效合約至關重要：</p>
+<div class="table-wrapper"><table><thead><tr><th>操作</th><th>Gas 成本</th><th>說明</th></tr></thead><tbody>
+<tr><td>SLOAD（讀 storage）</td><td>2,100（cold） / 100（warm）</td><td>EIP-2929 引入 cold/warm 概念</td></tr>
+<tr><td>SSTORE（寫 storage）</td><td>20,000（新 slot） / 5,000（更新）</td><td>最昂貴的操作之一</td></tr>
+<tr><td>CALL（外部呼叫）</td><td>2,600（cold）</td><td>加上被呼叫合約的 gas 消耗</td></tr>
+<tr><td>LOG（事件）</td><td>375 + 375 * topics + 8 * bytes</td><td>Topic 數量和資料長度影響成本</td></tr>
+<tr><td>Memory 擴展</td><td>二次方增長</td><td>超過一定大小後 gas 急劇增加</td></tr>
+</tbody></table>
+</div>
+<p><strong>Gas 優化技巧</strong>：</p>
+<ul>
+<li>將多個 <code>bool</code> 變數 pack 進同一個 <code>uint256</code> storage slot</li>
+<li>使用 <code>calldata</code> 而非 <code>memory</code> 作為外部函式的陣列參數</li>
+<li>將常用的 storage 讀取結果快取到 memory 變數中</li>
+</ul>
+<h2 id="75-最小權限設計"><a class="header" href="#75-最小權限設計">7.5 最小權限設計</a></h2>
+<p>最小權限原則（Principle of Least Privilege）是合約安全設計的基石。在區塊鏈上，權限過度集中不僅是安全風險，更是信任風險——如果一個 EOA 擁有無限權力，那麼所有用戶的資金安全取決於一把私鑰的安全。</p>
+<h3 id="owner-不直接掌資金"><a class="header" href="#owner-不直接掌資金">Owner 不直接掌資金</a></h3>
+<p><code>owner</code> 角色應只負責協議治理（參數調整、升級等），而非資金管理。資金應由獨立的 Treasury Multisig 控制。這樣即使 owner 私鑰洩露，攻擊者也無法直接提走資金。</p>
+<pre><code class="language-text">權限分離架構：
+
+┌────────────────────────────────────────────────────────┐
+│                    Protocol Governance                   │
+│                                                          │
+│  ┌──────────────┐    ┌──────────────┐    ┌────────────┐ │
+│  │ Owner Role   │    │ Treasury     │    │ Emergency  │ │
+│  │ (Multisig A) │    │ (Multisig B) │    │ (Multisig C│ │
+│  ├──────────────┤    ├──────────────┤    ├────────────┤ │
+│  │ - 參數調整   │    │ - 資金轉移   │    │ - pause()  │ │
+│  │ - 合約升級   │    │ - 預算分配   │    │ - 緊急提款 │ │
+│  │ - 角色管理   │    │ - 薪資發放   │    │            │ │
+│  └──────┬───────┘    └──────────────┘    └────────────┘ │
+│         │                                                │
+│         v                                                │
+│  ┌──────────────┐                                        │
+│  │  Timelock    │  24-48 小時延遲                         │
+│  │  Contract    │  讓社群有時間審查                        │
+│  └──────────────┘                                        │
+└────────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="管理操作進-timelock"><a class="header" href="#管理操作進-timelock">管理操作進 Timelock</a></h3>
+<p>所有重大管理操作（參數調整、升級、新增白名單等）都應通過 Timelock 合約。Timelock 引入強制延遲（通常 24-48 小時），在延遲期間社群可以審查即將執行的操作，必要時可以取消。</p>
+<p><strong>典型流程</strong>：</p>
+<ol>
+<li>Multisig 提交操作提案到 Timelock</li>
+<li>Timelock 排入佇列，啟動倒計時（例如 48 小時）</li>
+<li>社群透過 on-chain event 看到提案內容</li>
+<li>倒計時結束後，任何人都可以執行（execute）該操作</li>
+<li>如果社群發現問題，Multisig 可以在執行前取消</li>
+</ol>
+<h3 id="pause-與-unpause-分離角色"><a class="header" href="#pause-與-unpause-分離角色">pause 與 unpause 分離角色</a></h3>
+<p>緊急暫停機制是應對 0-day 漏洞的最後防線。關鍵設計原則是：<strong>pause 操作應該門檻低（快速反應），但 unpause 操作應該門檻高（確認安全後才恢復）</strong>。</p>
+<pre><code class="language-solidity">// 權限分離範例
+bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
+
+// PAUSER_ROLE: 可以是單一可信的 EOA（快速反應）
+// UNPAUSER_ROLE: 必須是 Multisig + Timelock（確保安全後才恢復）
+
+function pause() external onlyRole(PAUSER_ROLE) {
+    _pause();
+}
+
+function unpause() external onlyRole(UNPAUSER_ROLE) {
+    _unpause();
+}
+</code></pre>
+<p><strong>真實案例</strong>：2022 年 Nomad Bridge 被攻擊時，由於缺乏有效的暫停機制，攻擊在數小時內被多人複製，最終損失約 1.9 億美元。如果有快速暫停機制，損失可以大幅減少。</p>
+<h3 id="其他最小權限設計建議"><a class="header" href="#其他最小權限設計建議">其他最小權限設計建議</a></h3>
+<ul>
+<li><strong>函式可見性最小化</strong>：能用 <code>private</code> 就不用 <code>internal</code>，能用 <code>internal</code> 就不用 <code>public</code>。不需要被外部呼叫的函式絕對不要設為 <code>external</code> 或 <code>public</code>。</li>
+<li><strong>Approve 限額控制</strong>：合約與外部協議互動時，只 approve 當次操作所需的金額，操作完成後立即將 allowance 設回 0。避免無限 approve（<code>type(uint256).max</code>）造成的潛在風險。</li>
+<li><strong>角色過期機制</strong>：考慮為某些臨時性角色設定過期時間，例如部署初期的 <code>MINTER_ROLE</code> 在 7 天後自動失效。</li>
+</ul>
+<h2 id="白話總結"><a class="header" href="#白話總結">白話總結</a></h2>
+<p>智能合約可以想像成一台自動販賣機——一旦放到街上（部署上鏈），你就不能輕易打開它的外殼來修改內部電路了。所以在設計和製造階段，你必須把所有可能的情況都想清楚：如果有人塞假幣怎麼辦？如果有人同時按兩個按鈕怎麼辦？如果停電了（鏈暫停了）怎麼辦？</p>
+<p>合約的架構設計就像蓋房子，簡單的需求（一間工具間）用 Monolith 就好，複雜的需求（一棟商業大樓）就需要模組化設計，而如果你預期未來需要改建或擴建，就要用 Proxy 模式預留彈性。但 Proxy 模式也帶來額外的複雜度和風險，特別是 storage layout 衝突的問題，所以不是所有合約都適合用 Proxy。</p>
+<p>安全方面，重入攻擊（Reentrancy）是最經典的問題，它的本質就是「在你還沒記帳之前就讓你再付一次錢」。解法很簡單：先記帳再付錢。但現實中的安全問題往往更微妙，比如 Oracle 操縱就像是有人偷改了商品的標價牌，然後以錯誤的價格購買。</p>
+<p>權限管理的核心思想是「不要把所有鑰匙交給同一個人」。資金管理用一把鑰匙（Treasury Multisig），參數調整用另一把（Owner Multisig），緊急暫停用第三把（Pauser）。這樣即使某一把鑰匙被偷，損害也會被限制在最小範圍內。</p>
+<p>最後，監控和應急機制就像是大樓的消防系統——你希望永遠用不到它，但絕對不能沒有。一個好的合約系統應該能在發現異常的第一時間暫停運作，等待人類判斷和修復，而不是讓攻擊者有幾個小時的時間慢慢搬空資金。</p>
 
                     </main>
 

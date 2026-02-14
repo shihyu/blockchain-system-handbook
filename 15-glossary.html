@@ -178,32 +178,201 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="15-術語與快速索引"><a class="header" href="#15-術語與快速索引">15. 術語與快速索引</a></h1>
-<h2 id="核心術語"><a class="header" href="#核心術語">核心術語</a></h2>
+<p>本章收錄區塊鏈系統工程中最常見的術語，每個術語附帶簡要解釋和工程上的重要提醒。遇到不熟悉的詞彙時，先在這裡查找定義，再回到對應的主章節看完整上下文。術語按照類別分組，方便快速定位。</p>
+<hr />
+<h2 id="核心帳戶與交易模型"><a class="header" href="#核心帳戶與交易模型">核心帳戶與交易模型</a></h2>
 <ul>
-<li>EOA: Externally Owned Account，外部私鑰帳戶</li>
-<li>UTXO: Unspent Transaction Output，未花費輸出模型</li>
-<li>EUTXO: Extended UTXO，帶資料與腳本條件的 UTXO 擴展</li>
-<li>AA: Account Abstraction，可程式化帳戶</li>
-<li>MPC: Multi-Party Computation，多方計算簽名</li>
-<li>Multisig: M-of-N 門檻多簽</li>
-<li>MEV: Maximal Extractable Value，可提取價值</li>
-<li>Reorg: 區塊重組</li>
-<li>Finality: 最終性</li>
-<li>Sequencer: L2 排序器</li>
-<li>DA: Data Availability，資料可用性</li>
-<li>TVL: Total Value Locked</li>
+<li>
+<p><strong>EOA (Externally Owned Account)</strong>：外部私鑰帳戶，由一對公私鑰控制的基本帳戶類型。EOA 是 Ethereum 上最原始的帳戶形式，用戶直接持有私鑰來簽名和發起交易。EOA 的缺點是沒有內建的多簽、社交恢復或 gas 代付等功能。</p>
+</li>
+<li>
+<p><strong>UTXO (Unspent Transaction Output)</strong>：未花費輸出模型，Bitcoin 等鏈使用的交易模型。每筆交易消耗舊的 UTXO 並產生新的 UTXO，餘額是所有屬於你的 UTXO 的加總。這種模型天然支持並行驗證和資金流向追蹤。</p>
+</li>
+<li>
+<p><strong>EUTXO (Extended UTXO)</strong>：帶資料與腳本條件的 UTXO 擴展模型，由 Cardano 首創。在每個 UTXO 上附加 Datum（資料）和 Validator Script（驗證邏輯），使 UTXO 能承載更複雜的合約狀態，但開發難度顯著高於 Account 模型。</p>
+</li>
+<li>
+<p><strong>AA (Account Abstraction)</strong>：可程式化帳戶，透過 ERC-4337 標準在 Ethereum 上實現。允許用智能合約作為帳戶，支援 gas 代付、批量交易、session key、社交恢復等進階功能，大幅改善使用者體驗。</p>
+</li>
+<li>
+<p><strong>Nonce</strong>：交易序號，用於確保同一帳戶發出的交易按順序執行且不被重播。在 Account 模型中，nonce 是 per-account 的遞增序號；在高並發場景下，nonce 管理是工程上的主要挑戰之一。</p>
+</li>
+<li>
+<p><strong>Gas / Gas Price / Gas Limit</strong>：Gas 是 EVM 計算量的單位，Gas Price 是每單位 Gas 的費用，Gas Limit 是交易願意支付的最大 Gas 量。EIP-1559 引入了 base fee + priority fee 的雙層結構，使 gas 價格預測更可靠。</p>
+</li>
 </ul>
+<hr />
+<h2 id="密鑰與安全"><a class="header" href="#密鑰與安全">密鑰與安全</a></h2>
+<ul>
+<li>
+<p><strong>MPC (Multi-Party Computation)</strong>：多方計算簽名，將私鑰分割成多個 shard，分散到不同的計算節點。簽名時各節點協同計算，產生一個標準簽名，但任何單一節點都不擁有完整私鑰。機構級錢包（如 Fireblocks）的核心技術。</p>
+</li>
+<li>
+<p><strong>Multisig</strong>：M-of-N 門檻多簽，需要 N 個簽名者中的 M 個共同簽名才能執行交易。在 Ethereum 上通常用智能合約實現（如 Gnosis Safe），在 Bitcoin 上可以用 Script 或 Taproot 實現。多簽是 DAO 國庫和機構錢包的標準安全措施。</p>
+</li>
+<li>
+<p><strong>HSM (Hardware Security Module)</strong>：硬體安全模組，通過 FIPS 140-2/3 認證的專用硬體設備，用於安全地生成、儲存和使用密鑰。HSM 確保私鑰永遠不會以明文形式離開硬體，即使伺服器被入侵也無法提取密鑰。</p>
+</li>
+<li>
+<p><strong>TSS (Threshold Signature Scheme)</strong>：門檻簽名方案，MPC 的一種具體實現。與鏈上 multisig 不同，TSS 在鏈下完成多方協同簽名，鏈上只看到一個普通簽名，節省 gas 且保護隱私。</p>
+</li>
+<li>
+<p><strong>Seed Phrase / Mnemonic</strong>：助記詞，由 12 或 24 個英文單詞組成的私鑰備份方式（BIP-39 標準）。從助記詞可以確定性地推導出完整的密鑰樹。助記詞的安全保管是個人資產安全的基礎。</p>
+</li>
+<li>
+<p><strong>Social Recovery</strong>：社交恢復機制，用戶預設一組信任的 guardians，當私鑰遺失時，guardians 可以共同授權恢復帳戶控制權。AA 錢包（如 Argent）的常見功能。</p>
+</li>
+</ul>
+<hr />
+<h2 id="共識與最終性"><a class="header" href="#共識與最終性">共識與最終性</a></h2>
+<ul>
+<li>
+<p><strong>Finality</strong>：最終性，指交易被確認後不可逆轉的保證程度。不同鏈的最終性機制差異很大：Bitcoin 是概率性最終性（隨確認數增加，被推翻的概率指數下降）；Ethereum PoS 有 2 epoch 的確定性最終性；Tendermint-based 鏈通常有即時最終性。</p>
+</li>
+<li>
+<p><strong>Reorg (Chain Reorganization)</strong>：區塊重組，當網路中出現更長/更重的替代鏈時，節點會切換到新鏈，導致已確認的交易被撤銷。Reorg 是跨鏈橋和交易確認系統必須處理的核心風險。</p>
+</li>
+<li>
+<p><strong>Sequencer</strong>：L2 排序器，負責收集使用者交易、排序、執行、並將結果批次提交到 L1。目前大多數 L2（Arbitrum、Optimism、Base）使用中心化的 sequencer，這是一個信任假設和單點故障風險。去中心化 sequencer 是 L2 發展的重要方向。</p>
+</li>
+<li>
+<p><strong>Validator</strong>：驗證者，在 PoS 共識中負責提議和驗證新區塊的節點。Validator 需要質押代幣作為保證金，違規行為會被 slashing（沒收質押）。</p>
+</li>
+<li>
+<p><strong>Slashing</strong>：懲罰機制，當 validator 出現雙重簽名、長時間離線等違規行為時，系統會沒收其部分或全部質押代幣。Slashing 是 PoS 系統維護安全性的經濟激勵機制。</p>
+</li>
+<li>
+<p><strong>Fork (Hard Fork / Soft Fork)</strong>：分叉，區塊鏈協議升級的方式。Hard fork 是不向後相容的升級（舊節點不認新規則），可能導致鏈分裂（如 ETH/ETC）；Soft fork 是向後相容的升級（舊節點仍可驗證新區塊）。</p>
+</li>
+</ul>
+<hr />
+<h2 id="layer-2-與擴容"><a class="header" href="#layer-2-與擴容">Layer 2 與擴容</a></h2>
+<ul>
+<li>
+<p><strong>DA (Data Availability)</strong>：資料可用性，確保任何人都能取得驗證交易所需的完整資料。L2 將交易資料發布到 L1（或專用 DA 層如 Celestia、EigenDA），確保即使 sequencer 離線，用戶仍可從 DA 資料重建狀態並提領資金。</p>
+</li>
+<li>
+<p><strong>Rollup (Optimistic / ZK)</strong>：L2 擴容方案的主流架構。Optimistic Rollup 先假設交易正確，挑戰期內可提出 fraud proof；ZK Rollup 用零知識證明數學上保證交易正確。Optimistic 開發門檻較低但提領時間較長（7 天），ZK 安全性更強但計算成本較高。</p>
+</li>
+<li>
+<p><strong>Fraud Proof</strong>：欺詐證明，Optimistic Rollup 的安全機制。如果 sequencer 提交了錯誤的狀態，任何人都可以在挑戰期內提交 fraud proof 來推翻錯誤並獲得獎勵。</p>
+</li>
+<li>
+<p><strong>Validity Proof (ZK Proof)</strong>：有效性證明，ZK Rollup 的安全機制。每批交易都附帶一個數學證明，驗證所有交易的執行結果是正確的。L1 合約只需驗證這個簡短的證明，而不需重新執行所有交易。</p>
+</li>
+<li>
+<p><strong>Blob (EIP-4844)</strong>：Binary Large Object，Ethereum Dencun 升級引入的新交易類型，專門用於 L2 發布 DA 資料。Blob 資料的存儲成本遠低於 calldata，大幅降低了 L2 的運營成本。</p>
+</li>
+</ul>
+<hr />
+<h2 id="defi-與經濟模型"><a class="header" href="#defi-與經濟模型">DeFi 與經濟模型</a></h2>
+<ul>
+<li>
+<p><strong>MEV (Maximal Extractable Value)</strong>：可提取價值，指區塊生產者或 sequencer 可以通過重排、插入或排除交易來獲取的額外利潤。常見的 MEV 形式包括三明治攻擊（sandwich attack）、套利（arbitrage）和清算搶跑（liquidation frontrunning）。MEV 是 DeFi 用戶面臨的隱性成本。</p>
+</li>
+<li>
+<p><strong>TVL (Total Value Locked)</strong>：總鎖倉價值，衡量一個 DeFi 協議或區塊鏈生態中鎖定的資產總值。TVL 是評估協議規模和市場信心的常用指標，但也可能被操縱（如通過循環借貸虛增）。</p>
+</li>
+<li>
+<p><strong>Oracle</strong>：預言機，將鏈外資料（如價格、天氣、體育結果）安全地餵入鏈上合約。Chainlink 是最主流的去中心化預言機網路。預言機的可靠性直接影響依賴它的所有合約的安全性。</p>
+</li>
+<li>
+<p><strong>Liquidation</strong>：清算，當借貸協議中借款人的抵押品價值降到清算門檻以下時，系統允許清算人買走抵押品來償還債務。清算機制的正確性是借貸協議的安全基礎。</p>
+</li>
+<li>
+<p><strong>Flash Loan</strong>：閃電貸，在一個交易內完成借款和還款，無需抵押品。閃電貸本身是中性工具，但常被用於治理攻擊和價格操縱。</p>
+</li>
+<li>
+<p><strong>AMM (Automated Market Maker)</strong>：自動做市商，使用數學公式（如 x*y=k）而非訂單簿來提供流動性和定價。Uniswap、Curve 是最知名的 AMM 協議。</p>
+</li>
+<li>
+<p><strong>Impermanent Loss</strong>：無常損失，AMM 流動性提供者在代幣價格變動時相對於單純持有代幣的損失。價格偏離越大，無常損失越大。</p>
+</li>
+</ul>
+<hr />
+<h2 id="合約開發"><a class="header" href="#合約開發">合約開發</a></h2>
+<ul>
+<li>
+<p><strong>Proxy Pattern</strong>：代理模式，透過將合約邏輯和存儲分離，實現合約的可升級性。主流模式包括 Transparent Proxy（OpenZeppelin）和 UUPS。使用 proxy 時必須特別注意 storage layout 的相容性。</p>
+</li>
+<li>
+<p><strong>Reentrancy</strong>：重入攻擊，合約在外部呼叫完成前被再次呼叫，導致狀態不一致。2016 年 The DAO 事件（損失 $60M）就是重入攻擊。防禦方式包括 checks-effects-interactions 模式和 OpenZeppelin 的 ReentrancyGuard。</p>
+</li>
+<li>
+<p><strong>Timelock</strong>：時間鎖合約，執行敏感操作前強制等待一段時間。Timelock 給予社群審查即將執行的變更的機會，是 DAO 治理和合約升級的標準安全措施。</p>
+</li>
+<li>
+<p><strong>ERC-20 / ERC-721 / ERC-1155</strong>：Ethereum 代幣標準。ERC-20 是同質化代幣（如 USDC、LINK），ERC-721 是非同質化代幣（NFT），ERC-1155 是多代幣標準（一個合約可同時管理多種同質化和非同質化代幣）。</p>
+</li>
+<li>
+<p><strong>ABI (Application Binary Interface)</strong>：應用二進制介面，定義了如何與合約函數交互的編碼規範。前端和後端透過 ABI 來構造和解碼合約呼叫。</p>
+</li>
+<li>
+<p><strong>NatSpec</strong>：Natural Language Specification，Solidity 的文檔註解標準。用 <code>@notice</code>、<code>@param</code>、<code>@return</code> 等標籤為合約函數撰寫人類可讀的說明。</p>
+</li>
+</ul>
+<hr />
+<h2 id="監控與營運"><a class="header" href="#監控與營運">監控與營運</a></h2>
+<ul>
+<li>
+<p><strong>SIEM (Security Information and Event Management)</strong>：安全資訊與事件管理系統，集中收集、分析和留存安全事件日誌。在區塊鏈系統中，SIEM 應同時涵蓋鏈上事件（合約 event）和鏈下事件（API 存取、配置變更）。</p>
+</li>
+<li>
+<p><strong>RPC (Remote Procedure Call)</strong>：遠程過程呼叫，與區塊鏈節點交互的標準介面。常用的 RPC provider 包括 Alchemy、Infura、QuickNode。生產環境應使用多個 RPC provider 做 load balancing 和 failover。</p>
+</li>
+<li>
+<p><strong>Subgraph / Indexer</strong>：鏈上資料索引服務，將合約 event 和交易資料轉換為可查詢的結構化資料庫。The Graph 是最常用的去中心化索引協議，Ponder 和 Envio 是較新的替代方案。</p>
+</li>
+<li>
+<p><strong>Runbook</strong>：操作手冊，記錄常見問題和緊急事件的標準操作流程。每個 P0/P1 告警都應有對應的 Runbook，描述確認問題、定位根因、執行修復的具體步驟。</p>
+</li>
+</ul>
+<hr />
+<h2 id="跨鏈與橋接"><a class="header" href="#跨鏈與橋接">跨鏈與橋接</a></h2>
+<ul>
+<li>
+<p><strong>Bridge</strong>：跨鏈橋，在不同區塊鏈之間轉移資產和訊息的基礎設施。常見的安全模型包括：信任 committee（如 Wormhole guardians）、optimistic（如 Across）、ZK 證明（如 zkBridge）。跨鏈橋是歷史上損失最大的攻擊面。</p>
+</li>
+<li>
+<p><strong>Wrapped Token</strong>：包裝代幣，將一條鏈上的原生資產在另一條鏈上以 1:1 的 ERC-20 代幣形式表示。例如 WBTC（Wrapped Bitcoin on Ethereum）。Wrapped token 的安全性取決於背後的託管/橋接機制。</p>
+</li>
+<li>
+<p><strong>Canonical Bridge vs Third-Party Bridge</strong>：官方橋與第三方橋。L2 通常有官方橋（安全性繼承 L1，但速度慢），第三方橋（如 Stargate、Across）提供更快的體驗但引入額外信任假設。</p>
+</li>
+</ul>
+<hr />
+<h2 id="合規與監管"><a class="header" href="#合規與監管">合規與監管</a></h2>
+<ul>
+<li>
+<p><strong>AML (Anti-Money Laundering)</strong>：反洗錢，要求金融機構識別和報告可疑交易的法規框架。在加密貨幣領域，AML 合規通常透過鏈上分析工具（如 Chainalysis、Elliptic）來實現。</p>
+</li>
+<li>
+<p><strong>KYT (Know Your Transaction)</strong>：認識你的交易，透過分析鏈上交易歷史和資金來源來評估交易風險。KYT 是 AML 合規的具體技術實現。</p>
+</li>
+<li>
+<p><strong>Proof of Reserves (PoR)</strong>：儲備證明，交易所或託管機構公開證明其持有的鏈上資產足以覆蓋用戶存款。通常透過 Merkle tree 或 ZK proof 實現，FTX 事件後成為業界標準要求。</p>
+</li>
+<li>
+<p><strong>Travel Rule</strong>：旅行規則，要求虛擬資產服務提供商（VASP）在超過一定金額的交易中，傳遞發送方和接收方的身份資訊。來自 FATF 的建議，各國正逐步立法實施。</p>
+</li>
+</ul>
+<hr />
 <h2 id="快速定位"><a class="header" href="#快速定位">快速定位</a></h2>
-<ul>
-<li>想看交易流程: 第 6 章</li>
-<li>想看合約執行: 第 7 章</li>
-<li>想看跨鏈風險: 第 8 章</li>
-<li>想看多簽完整設計: 第 10 章</li>
-<li>想看安全與事故: 第 11 章</li>
-<li>想上線前總檢查: 第 14 章</li>
-</ul>
-<h2 id="白話說明"><a class="header" href="#白話說明">白話說明</a></h2>
-<p>這一章可以當字典。遇到陌生詞先回來查，再回主章節看完整上下文。</p>
+<div class="table-wrapper"><table><thead><tr><th>想了解的主題</th><th>參考章節</th></tr></thead><tbody>
+<tr><td>交易流程與生命週期</td><td>第 6 章</td></tr>
+<tr><td>合約執行與 EVM 機制</td><td>第 7 章</td></tr>
+<tr><td>跨鏈風險與橋接安全</td><td>第 8 章</td></tr>
+<tr><td>多簽完整設計與實作</td><td>第 10 章</td></tr>
+<tr><td>安全事故與防禦策略</td><td>第 11 章</td></tr>
+<tr><td>參考架構藍圖</td><td>第 13 章</td></tr>
+<tr><td>上線前總檢查清單</td><td>第 14 章</td></tr>
+<tr><td>UTXO 模型深入解析</td><td>第 16 章</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="白話總結"><a class="header" href="#白話總結">白話總結</a></h2>
+<p>這一章是整本手冊的字典和索引。區塊鏈工程涉及大量的專業術語，有些源自密碼學（如 MPC、TSS），有些源自分散式系統（如 Finality、Reorg），有些源自金融（如 AML、Liquidation），有些則是區塊鏈特有的概念（如 MEV、Gas）。初學者在閱讀其他章節時，遇到不認識的詞彙可以先回來這裡查找定義和簡要說明，了解基本概念後再回到主章節看完整的技術脈絡。</p>
+<p>術語列表也按照類別分組（帳戶模型、密鑰安全、共識機制、L2 擴容、DeFi、合約開發、監控營運、跨鏈橋接、合規監管），方便你在研究某個特定領域時快速找到所有相關術語。「快速定位」表格則告訴你每個主題在手冊中的對應章節，當你需要深入了解某個概念時，可以直接跳轉到對應的章節閱讀。建議在開始閱讀整本手冊之前，先快速瀏覽一遍這份術語表，對整體知識地圖有個概念，後續閱讀會更順暢。</p>
 
                     </main>
 

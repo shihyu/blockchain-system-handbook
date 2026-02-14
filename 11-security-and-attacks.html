@@ -179,45 +179,331 @@
                     <main>
                         <h1 id="11-攻擊面事故型態與防禦"><a class="header" href="#11-攻擊面事故型態與防禦">11. 攻擊面、事故型態與防禦</a></h1>
 <h2 id="111-攻擊面總覽"><a class="header" href="#111-攻擊面總覽">11.1 攻擊面總覽</a></h2>
-<ul>
-<li>私鑰與簽名端</li>
-<li>合約程式邏輯</li>
-<li>預言機與外部資料</li>
-<li>前端供應鏈</li>
-<li>RPC/節點基礎設施</li>
-<li>跨鏈橋與治理權限</li>
-</ul>
+<p>區塊鏈系統的攻擊面遠比大多數人想像的更廣。攻擊者不一定要找到合約漏洞——他們可能攻擊前端、竊取私鑰、操控預言機、或者利用供應鏈注入惡意程式碼。理解完整的攻擊面是建立有效防禦的第一步。</p>
+<pre><code class="language-text">┌─────────────────────────────────────────────────────────────┐
+│                    攻擊面全景圖                              │
+│                                                             │
+│  ┌─────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐ │
+│  │  用戶端  │   │  前端/    │   │ 後端/     │   │  鏈上    │ │
+│  │         │──&gt;│  供應鏈   │──&gt;│ 基礎設施  │──&gt;│  合約    │ │
+│  └─────────┘   └──────────┘   └──────────┘   └──────────┘ │
+│   釣魚攻擊      NPM 投毒      RPC 劫持       重入攻擊      │
+│   社交工程      DNS 劫持       節點中心化     閃電貸操控    │
+│   假錢包        CDN 竄改       MEV 攻擊       治理攻擊      │
+│                                                             │
+│  ┌─────────┐   ┌──────────┐   ┌──────────┐                │
+│  │  私鑰/   │   │  預言機/  │   │  跨鏈橋  │                │
+│  │  簽名端  │   │  外部資料 │   │         │                │
+│  └─────────┘   └──────────┘   └──────────┘                │
+│   助記詞洩漏     價格操控       validator     │
+│   硬體漏洞       延遲攻擊       compromise    │
+│   MPC 碎片       假數據源       中繼器攻擊     │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>私鑰與簽名端</strong></p>
+<p>私鑰是區塊鏈系統中最核心的安全資產。一旦私鑰洩漏，攻擊者可以完全控制對應的帳戶和所有資產。私鑰洩漏的途徑包括：助記詞被截圖或備份到雲端、開發者在測試環境中使用生產私鑰、惡意軟體記錄鍵盤輸入、硬體錢包韌體漏洞等。2024 年的多起大型安全事故都與私鑰管理不善有關。</p>
+<p>MPC（Multi-Party Computation）技術將私鑰分割成多個碎片，分散存放在不同的節點上，簽署時各碎片協作計算但私鑰從不完整出現。這比傳統的多簽提供了更好的隱私性（外部無法區分 MPC 簽名和普通簽名），但引入了新的攻擊面：碎片的安全性、MPC 協議實現的正確性、以及碎片輪替過程中的風險。</p>
+<p><strong>合約程式邏輯</strong></p>
+<p>智能合約的漏洞是最被廣泛研究的攻擊面。常見的漏洞類型包括：重入攻擊（Reentrancy）、整數溢位/下溢（在 Solidity 0.8+ 之前）、存取控制缺陷、價格操控、閃電貸攻擊、以及邏輯錯誤。值得注意的是，許多漏洞不是單一函式的 bug，而是多個合約互動時產生的意外行為——這種組合漏洞特別難被靜態分析工具發現。</p>
+<p><strong>預言機與外部資料</strong></p>
+<p>預言機（Oracle）是鏈下數據進入鏈上的橋樑，也是 DeFi 系統中最脆弱的環節之一。如果預言機回報了錯誤的價格，任何依賴該價格的合約都可能被利用。攻擊方式包括：直接操控底層 DEX 的流動性池（影響 TWAP 計算）、在低流動性時段放大價格偏差、利用預言機更新的延遲窗口進行套利。</p>
+<p><strong>前端供應鏈</strong></p>
+<p>前端攻擊是最容易被忽視但影響面最大的攻擊途徑。攻擊者不需要找到合約漏洞，只需要篡改用戶看到的介面，就能讓用戶簽署惡意交易。2022 年 BadgerDAO 事件中，攻擊者透過 Cloudflare API key 注入了惡意的前端腳本，讓用戶在不知情的情況下批准了對攻擊者地址的無限授權（unlimited approval）。損失超過 1.2 億美元。</p>
+<p>常見的前端攻擊途徑包括：NPM 套件被注入惡意程式碼、DNS 劫持將用戶導向假網站、CDN 被入侵後替換了 JavaScript 檔案、開發者的 API key 洩漏。</p>
+<p><strong>RPC/節點基礎設施</strong></p>
+<p>如果應用程式依賴的 RPC 節點被攻擊者控制或篡改，攻擊者可以：回傳錯誤的鏈上狀態、延遲或隱藏交易、進行 eclipse attack（讓節點只看到攻擊者製造的假鏈）。使用單一 RPC 提供者（如只依賴 Infura 或 Alchemy 中的一個）也存在可用性風險——如果該服務中斷，整個應用就會停擺。</p>
+<p><strong>跨鏈橋與治理權限</strong></p>
+<p>跨鏈橋是區塊鏈生態中被攻擊最頻繁、損失最大的領域。從 2021 年到 2024 年，跨鏈橋攻擊累計損失超過 25 億美元。攻擊方式包括：validator/relayer 的私鑰被盜（Ronin Bridge）、驗證邏輯漏洞（Wormhole）、橋合約的存取控制缺陷（Nomad）。跨鏈橋的根本難題是：它需要在兩條不同的鏈之間建立信任，而這種信任往往依賴於少數 validator 的誠實性。</p>
 <h2 id="112-典型事故分類"><a class="header" href="#112-典型事故分類">11.2 典型事故分類</a></h2>
-<ul>
-<li>Key compromise</li>
-<li>Contract exploit</li>
-<li>Oracle manipulation</li>
-<li>Governance attack</li>
-<li>Bridge validator compromise</li>
-</ul>
+<p>理解歷史事故的分類有助於團隊建立針對性的防禦策略。以下是五大類事故及其代表性案例。</p>
+<p><strong>Key Compromise（私鑰失陷）</strong></p>
+<p>私鑰失陷是損失金額最大的攻擊類型之一。攻擊者一旦取得管理員或多簽成員的私鑰，就可以直接控制合約或轉移資金。</p>
+<div class="table-wrapper"><table><thead><tr><th>事件</th><th>年份</th><th>損失</th><th>根本原因</th></tr></thead><tbody>
+<tr><td>Ronin Bridge</td><td>2022</td><td>~$625M</td><td>validator 私鑰被盜</td></tr>
+<tr><td>Harmony Horizon</td><td>2022</td><td>~$100M</td><td>2-of-5 多簽被攻陷</td></tr>
+<tr><td>Atomic Wallet</td><td>2023</td><td>~$100M</td><td>加密私鑰的密鑰管理漏洞</td></tr>
+</tbody></table>
+</div>
+<p>防禦重點：使用硬體錢包、MPC、或多簽；私鑰離線生成和保管；定期輪替；最小權限原則。</p>
+<p><strong>Contract Exploit（合約漏洞利用）</strong></p>
+<p>合約漏洞是最「技術性」的攻擊類型。攻擊者發現合約邏輯中的缺陷，構造特定的交易序列來觸發意外行為。</p>
+<pre><code class="language-text">常見合約漏洞及其攻擊模式：
+
+  Reentrancy（重入攻擊）：
+    攻擊合約 ──call──&gt; 受害合約（轉帳）──callback──&gt; 攻擊合約（再次call）
+    根因：先轉帳再更新狀態
+    防禦：Checks-Effects-Interactions 模式 + ReentrancyGuard
+
+  Flash Loan Attack（閃電貸攻擊）：
+    同一筆交易中：借入大量資金 ──&gt; 操控價格/投票 ──&gt; 獲利 ──&gt; 還款
+    根因：依賴即時的現貨價格
+    防禦：TWAP 預言機 + 延遲機制
+
+  Access Control（存取控制缺陷）：
+    任何人都可以呼叫 admin-only 函式
+    根因：遺漏 onlyOwner/onlyAdmin modifier
+    防禦：完整的角色定義 + 測試覆蓋
+</code></pre>
+<p><strong>Oracle Manipulation（預言機操控）</strong></p>
+<p>預言機操控通常與閃電貸結合。攻擊者借入大量資金操控 DEX 流動性池的價格，讓預言機回報被扭曲的價格，然後利用這個假價格在受害協議中獲利。</p>
+<p>典型攻擊流程：</p>
+<ol>
+<li>閃電貸借入大量 ETH</li>
+<li>在 Uniswap 池中大量拋售 ETH，壓低 ETH/USDC 價格</li>
+<li>在使用該池作為預言機的借貸協議中，以壓低後的價格抵押 ETH 借出大量 USDC</li>
+<li>在 Uniswap 池中買回 ETH（價格恢復）</li>
+<li>歸還閃電貸，淨賺差價</li>
+</ol>
+<p>防禦措施：使用 Chainlink 等去中心化預言機而非單一 DEX 價格；使用 TWAP（時間加權平均價格）而非即時價格；設定價格偏差閾值，超過一定範圍的價格變動需要額外確認。</p>
+<p><strong>Governance Attack（治理攻擊）</strong></p>
+<p>治理攻擊是指攻擊者透過合法的治理流程，通過惡意提案來控制協議。2022 年 Beanstalk 事件中，攻擊者使用閃電貸借入大量治理 token，在同一個區塊中提案並投票通過了一個惡意提案，將協議金庫中的資金轉出。</p>
+<p>防禦措施：提案和投票之間設定時間間隔（防止閃電貸攻擊）；投票需要持有 token 超過一定時間（snapshot 機制）；設定 quorum 門檻和提案門檻；重大改動需要更長的 timelock。</p>
+<p><strong>Bridge Validator Compromise（橋驗證器失陷）</strong></p>
+<p>跨鏈橋 validator 的失陷是最嚴重的攻擊類型，因為橋通常管理著大量的鎖定資產。攻擊者只需要控制足夠數量的 validator（通常是 M-of-N 中的 M 個），就可以偽造跨鏈消息，在目標鏈上憑空鑄造資產或解鎖橋中的鎖定資產。</p>
+<pre><code class="language-text">橋驗證器攻擊模型：
+
+  源鏈                  驗證器集合              目標鏈
+  ┌────┐               ┌────────┐             ┌────┐
+  │用戶│──鎖定資產──&gt;   │V1 (OK) │             │    │
+  │    │               │V2 (OK) │──偽造證明──&gt;│鑄造│
+  │    │               │V3 (被控)│             │假幣│
+  │    │               │V4 (被控)│             │    │
+  │    │               │V5 (被控)│             │    │
+  └────┘               └────────┘             └────┘
+                        3-of-5 被攻陷
+                        = 完全控制橋接資產
+</code></pre>
 <h2 id="113-防禦分層"><a class="header" href="#113-防禦分層">11.3 防禦分層</a></h2>
+<p>有效的安全防禦不是單一措施，而是多層防線的組合。即使某一層被突破，後面的層級仍然可以減輕損失。這個概念借鑒自傳統安全領域的「深度防禦」（Defense in Depth）。</p>
 <pre><code class="language-text">Layer 1: Prevent   -&gt; 最小權限、審計、MPC/Multisig
 Layer 2: Detect    -&gt; 監控、異常告警、MEV/價格偏差監測
 Layer 3: Respond   -&gt; Pause、限額、黑白名單、應急流程
 Layer 4: Recover   -&gt; 財務對帳、法務流程、用戶補償策略
 </code></pre>
+<p><strong>Layer 1: Prevent（預防）</strong></p>
+<p>預防層的目標是從根本上減少漏洞的數量和攻擊的可能性。</p>
+<p>最小權限原則（Principle of Least Privilege）是預防層的基石。每個合約、每個角色、每個 API 端點都應該只擁有完成其功能所需的最少權限。管理員帳戶不應該有直接轉移用戶資金的權限；預言機更新合約不應該有暫停合約的權限。權限應該細粒度劃分，避免「超級管理員」的存在。</p>
+<p>代碼審計是預防層的另一個關鍵環節。一次完整的審計應該包括：至少兩家獨立審計公司的審計、社群公開的審計競賽（audit contest，如 Code4rena、Sherlock）、以及內部持續性的安全審查。審計不是一次性的活動——每次合約升級、參數調整、或新功能上線都需要重新評估安全性。</p>
+<pre><code class="language-solidity">// 最小權限的合約設計範例
+contract Treasury {
+    // 角色定義：每個角色只有特定權限
+    bytes32 public constant PROPOSER_ROLE = keccak256("PROPOSER");
+    bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR");
+    bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN");
+
+    // Guardian 只能暫停，不能轉帳
+    function pause() external onlyRole(GUARDIAN_ROLE) {
+        _pause();
+    }
+
+    // 只有 Executor 可以執行已批准的交易
+    function execute(bytes32 txId)
+        external
+        onlyRole(EXECUTOR_ROLE)
+        whenNotPaused
+    {
+        require(isApproved(txId), "Not approved");
+        require(timelockExpired(txId), "Timelock active");
+        _execute(txId);
+    }
+}
+</code></pre>
+<p><strong>Layer 2: Detect（偵測）</strong></p>
+<p>偵測層的目標是在攻擊發生的早期階段就發出警報，縮短從攻擊開始到被發現之間的時間窗口。</p>
+<p>即時監控應該覆蓋以下維度：</p>
+<ul>
+<li><strong>資金異動監控</strong>：監測合約餘額的大幅變化、異常的轉帳模式、大額授權（approve）</li>
+<li><strong>價格偏差監控</strong>：監測預言機回報的價格與市場公允價格的偏差，超過閾值立即告警</li>
+<li><strong>MEV 監控</strong>：追蹤 mempool 中的交易，偵測可能的搶跑（frontrunning）或三明治攻擊（sandwich attack）</li>
+<li><strong>治理活動監控</strong>：監測異常的提案、大量 token 轉移到投票合約、以及快速投票等可疑行為</li>
+</ul>
+<p>推薦工具包括 Forta Network（分散式威脅偵測）、OpenZeppelin Defender（自動化安全監控）、以及自建的 event listener。</p>
+<pre><code class="language-text">偵測系統架構：
+
+  鏈上事件                     偵測引擎                    告警通道
+  ┌──────────┐               ┌──────────┐              ┌──────────┐
+  │ Transfer │──&gt;            │ 規則引擎  │──P0 告警──&gt;  │ PagerDuty│
+  │ Approval │──&gt;  Event     │ (金額門檻 │              │ 電話叫醒 │
+  │ Swap     │──&gt;  Stream ──&gt;│  頻率異常 │              └──────────┘
+  │ Governance│──&gt;           │  模式匹配)│──P1 告警──&gt;  ┌──────────┐
+  │ Admin    │──&gt;            └──────────┘              │ Slack    │
+  └──────────┘                    │                    │ Telegram │
+                                  │                    └──────────┘
+                            ┌─────▼────┐
+                            │ Dashboard│
+                            │ Grafana  │
+                            └──────────┘
+</code></pre>
+<p><strong>Layer 3: Respond（回應）</strong></p>
+<p>當偵測層發出告警後，回應層的目標是在最短時間內阻止損失擴大。</p>
+<p>Pause（暫停）是最快速的止血手段。暫停後，合約的核心功能（存款、提款、交換等）被凍結，攻擊者無法繼續抽取資金。但暫停也會影響正常用戶，因此只應在確認攻擊正在進行時使用。</p>
+<p>限額機制（Rate Limiting）是一種更精細的回應方式。與完全暫停不同，限額機制允許小額交易繼續進行，但阻止大額提款。例如，設定每小時最多允許提取合約餘額的 10%。這在攻擊的早期階段特別有效，因為攻擊者通常試圖在最短時間內抽走最多資金。</p>
+<p>黑名單（Blocklist）可以阻止特定地址與合約互動。在發現攻擊者地址後，可以立即將其加入黑名單。但黑名單的效力有限，因為攻擊者可以輕鬆創建新地址。</p>
+<p><strong>Layer 4: Recover（恢復）</strong></p>
+<p>恢復層處理事故後的善後工作，包括：精確的財務對帳（確定損失金額和受影響的用戶）、與法務團隊合作追蹤資金流向、制定用戶補償方案（直接補償、發行 IOU token、或分期償還等）、以及出具公開的事故報告。</p>
+<p>值得注意的是，鏈上資金追蹤已經變得越來越成熟。Chainalysis、Elliptic、TRM Labs 等鏈上分析公司可以追蹤被盜資金通過混幣器（如 Tornado Cash）、跨鏈橋、以及中心化交易所的流向。一些重大攻擊事件中，攻擊者最終被追蹤到並被起訴或通過談判歸還了部分資金。</p>
 <h2 id="114-合約安全測試矩陣"><a class="header" href="#114-合約安全測試矩陣">11.4 合約安全測試矩陣</a></h2>
+<p>完整的合約安全測試應該涵蓋多種測試方法，每種方法發現不同類型的問題。沒有任何一種測試方法可以覆蓋所有潛在漏洞，因此必須組合使用。</p>
+<p><strong>Unit Test（單元測試）</strong></p>
+<p>單元測試驗證合約中每個函式在正常輸入和邊界條件下的行為。好的單元測試不只測試「正確的輸入產生正確的輸出」，更要測試「錯誤的輸入產生正確的錯誤」。例如，非管理員呼叫管理員函式應該 revert；餘額不足的轉帳應該 revert 並返回明確的錯誤訊息。</p>
+<pre><code class="language-solidity">// Foundry 單元測試範例
+function test_TransferRevertsOnInsufficientBalance() public {
+    vm.prank(alice);
+    vm.expectRevert("Insufficient balance");
+    token.transfer(bob, 1000 ether);
+}
+
+function test_OnlyAdminCanPause() public {
+    vm.prank(attacker);
+    vm.expectRevert("AccessControl: not admin");
+    vault.pause();
+}
+</code></pre>
+<p><strong>Invariant Test（不變量測試）</strong></p>
+<p>不變量測試（也稱為 property-based testing）定義合約應該永遠保持的性質，然後讓測試框架隨機產生大量的交易序列來嘗試違反這些不變量。這比手動編寫測試案例能發現更多的邊界情況。</p>
+<p>常見的不變量包括：</p>
 <ul>
-<li>Unit test</li>
-<li>Invariant test</li>
-<li>Fuzz test</li>
-<li>Symbolic execution</li>
-<li>Mainnet fork simulation</li>
+<li>所有用戶餘額之和等於合約中的 token 總量</li>
+<li>借貸協議的抵押率永遠大於最低要求</li>
+<li>管理員地址永遠不是零地址</li>
+<li>合約暫停狀態下不能執行資金操作</li>
 </ul>
+<pre><code class="language-solidity">// Foundry 不變量測試範例
+function invariant_TotalSupplyMatchesBalances() public {
+    uint256 totalFromBalances;
+    for (uint256 i = 0; i &lt; actors.length; i++) {
+        totalFromBalances += token.balanceOf(actors[i]);
+    }
+    assertEq(token.totalSupply(), totalFromBalances);
+}
+
+function invariant_VaultAlwaysSolvent() public {
+    assertGe(
+        underlying.balanceOf(address(vault)),
+        vault.totalDeposits()
+    );
+}
+</code></pre>
+<p><strong>Fuzz Test（模糊測試）</strong></p>
+<p>模糊測試自動產生隨機的輸入值，嘗試觸發意外行為。與不變量測試不同，模糊測試關注的是單個函式的行為，而非系統級的性質。Foundry 和 Echidna 都支持模糊測試。重點是確保模糊測試涵蓋足夠的輸入空間，包括極端值（0、最大值、邊界值）和特殊值。</p>
+<pre><code class="language-solidity">// Foundry fuzz 測試
+function testFuzz_DepositAndWithdraw(uint256 amount) public {
+    // 限制輸入範圍，避免無意義的測試
+    amount = bound(amount, 1, type(uint128).max);
+
+    deal(address(token), alice, amount);
+    vm.startPrank(alice);
+    token.approve(address(vault), amount);
+    vault.deposit(amount);
+
+    assertEq(vault.balanceOf(alice), amount);
+
+    vault.withdraw(amount);
+    assertEq(token.balanceOf(alice), amount);
+    vm.stopPrank();
+}
+</code></pre>
+<p><strong>Symbolic Execution（符號執行）</strong></p>
+<p>符號執行使用數學方法探索合約的所有可能執行路徑。與模糊測試的隨機探索不同，符號執行是系統性的，可以證明某些性質在所有可能的輸入下都成立（或找到反例）。工具包括 Halmos、HEVM、以及 Manticore。</p>
+<p>符號執行的缺點是計算成本高，對於複雜的合約可能需要很長時間才能完成分析。實務上，通常只對最關鍵的安全函式使用符號執行。</p>
+<p><strong>Mainnet Fork Simulation（主網分叉模擬）</strong></p>
+<p>主網分叉模擬使用真實的主網狀態（餘額、合約、流動性）來測試交易的效果。這是最貼近真實環境的測試方式，可以發現只在真實狀態下才會出現的問題。</p>
+<pre><code class="language-bash"># Foundry 主網分叉測試
+forge test --fork-url $ETH_MAINNET_RPC \
+  --fork-block-number 19000000 \
+  -vvv
+
+# 在分叉環境中模擬攻擊場景
+forge script script/SimulateAttack.s.sol \
+  --fork-url $ETH_MAINNET_RPC \
+  --sender $ATTACKER_ADDRESS
+</code></pre>
+<p><strong>測試矩陣總覽：</strong></p>
+<pre><code class="language-text">┌──────────────────┬──────────────┬──────────────┬───────────────┐
+│ 測試類型          │ 發現的問題    │ 成本         │ 覆蓋度         │
+├──────────────────┼──────────────┼──────────────┼───────────────┤
+│ Unit Test        │ 功能錯誤      │ 低           │ 手動指定       │
+│ Invariant Test   │ 系統級違規    │ 中           │ 自動探索       │
+│ Fuzz Test        │ 邊界/溢位     │ 中           │ 隨機探索       │
+│ Symbolic Exec    │ 邏輯漏洞      │ 高           │ 完整探索       │
+│ Mainnet Fork     │ 整合/狀態問題 │ 中           │ 真實環境       │
+└──────────────────┴──────────────┴──────────────┴───────────────┘
+</code></pre>
 <h2 id="115-營運安全"><a class="header" href="#115-營運安全">11.5 營運安全</a></h2>
+<p>合約部署上線後，營運安全（Operational Security, OpSec）變成了持續性的挑戰。再好的合約代碼，如果營運流程有漏洞，一樣可能被攻擊。</p>
+<p><strong>簽名設備不連網通用主機</strong></p>
+<p>所有用於簽署高價值交易的設備（硬體錢包、air-gapped 電腦）都不應該與日常工作設備混用。理想的設定是一台專用的、從未安裝過任何非必要軟體的電腦，僅透過 USB 連接硬體錢包進行簽署。這台設備不連接 Wi-Fi，不插入任何外部儲存設備，不安裝瀏覽器。交易的 calldata 透過 QR code 或手動輸入的方式傳入。</p>
+<p>這聽起來很不方便，但在管理數百萬美元資產的場景中，不便是可以接受的成本。每次使用完畢後，設備應該關機並安全保管。</p>
+<p><strong>交易前模擬與結果比對</strong></p>
+<p>在簽署任何交易之前，必須先在模擬環境中執行，並比對模擬結果與預期是否一致。模擬應該涵蓋：</p>
 <ul>
-<li>簽名設備不連網通用主機</li>
-<li>交易前模擬與結果比對</li>
-<li>變更窗口與雙人覆核</li>
-<li>所有高風險操作強制審批單號</li>
+<li>資金流向（哪些地址的餘額會增加/減少多少）</li>
+<li>事件日誌（會觸發哪些 event）</li>
+<li>狀態變更（哪些 storage slot 會被修改）</li>
+<li>gas 消耗（異常的 gas 消耗可能暗示非預期的邏輯執行）</li>
 </ul>
-<h2 id="白話說明"><a class="header" href="#白話說明">白話說明</a></h2>
-<p>安全不是審一次 code 就結束，而是整個開發到營運流程都要可驗證、可追責。</p>
+<pre><code class="language-bash"># 交易模擬檢查清單
+# 1. 解碼 calldata
+cast 4byte-decode $CALLDATA
+
+# 2. 模擬執行
+cast call --from $SENDER --to $TARGET --data $CALLDATA --rpc-url $RPC
+
+# 3. 追蹤內部呼叫
+cast run $TX_HASH --trace --rpc-url $RPC
+
+# 4. 比對前後狀態
+cast storage $CONTRACT $SLOT --rpc-url $RPC  # 執行前
+# ... 執行交易 ...
+cast storage $CONTRACT $SLOT --rpc-url $RPC  # 執行後
+</code></pre>
+<p><strong>變更窗口與雙人覆核</strong></p>
+<p>所有高風險的鏈上操作（合約升級、參數調整、大額轉帳）都應該在預先排定的變更窗口內執行，並且需要至少兩位工程師在場進行交叉覆核。變更窗口的時間應該選擇團隊最清醒、最不容易犯錯的時段（避免半夜、週末、假期前夕）。</p>
+<p>雙人覆核的具體做法：一位工程師準備交易並解釋內容，另一位工程師獨立驗證 calldata、模擬結果、和目標地址。兩人都確認無誤後才進行簽署。</p>
+<p><strong>所有高風險操作強制審批單號</strong></p>
+<p>每筆高風險操作都應該與一張 ticket（如 JIRA、Linear、GitHub Issue）關聯。ticket 中記錄：操作的目的、審批人、模擬結果、簽署人、執行時間、以及事後驗證結果。這個 audit trail 在事故調查和合規審計時至關重要。</p>
+<p><strong>額外的營運安全最佳實踐：</strong></p>
+<ul>
+<li><strong>定期 secret rotation</strong>：定期輪替所有 API key、RPC 端點密碼、和服務帳戶憑證</li>
+<li><strong>最小暴露原則</strong>：不在公開 repo 中暴露合約部署腳本、測試私鑰、或內部基礎設施資訊</li>
+<li><strong>通訊安全</strong>：討論安全相關事項使用端對端加密的通訊工具（如 Signal），不在公開的 Discord/Telegram 群組中討論私鑰、金額、或交易細節</li>
+<li><strong>員工安全意識培訓</strong>：定期進行釣魚模擬演練，確保團隊成員能識別和回報可疑訊息</li>
+<li><strong>離職流程</strong>：員工離職時，必須在 24 小時內從所有多簽和權限群組中移除，並觸發密鑰輪替</li>
+</ul>
+<h2 id="116-案例分析攻擊時間線"><a class="header" href="#116-案例分析攻擊時間線">11.6 案例分析：攻擊時間線</a></h2>
+<p>以下是一個典型的合約攻擊事件的時間線分析，展示了從偵測到回應的完整過程。</p>
+<pre><code class="language-text">典型攻擊事件時間線：
+
+  T-30 天    攻擊者開始研究目標協議的合約程式碼
+  T-7 天     攻擊者在 testnet 上測試攻擊向量
+  T-1 天     攻擊者準備閃電貸和攻擊合約
+  T-1 小時   攻擊者部署攻擊合約到 mainnet
+  T+0        攻擊交易上鏈（整個攻擊在一個區塊內完成）
+  T+2 分鐘   自動化監控偵測到大額異常轉帳
+  T+5 分鐘   安全工程師收到 P0 告警
+  T+10 分鐘  確認攻擊正在進行
+  T+12 分鐘  觸發 Pause Guardian 暫停合約
+  T+30 分鐘  初步損失評估完成
+  T+1 小時   對外公告事故
+  T+4 小時   根本原因初步分析完成
+  T+24 小時  詳細 postmortem 發布
+  T+7 天     修復方案完成 + 審計
+  T+14 天    修復部署 + 分階段恢復
+  T+30 天    用戶補償方案執行完畢
+</code></pre>
+<p><strong>關鍵教訓：</strong></p>
+<ul>
+<li>T+0 到 T+12 分鐘的窗口決定了損失的大小。如果暫停速度更慢，損失會更大</li>
+<li>攻擊者通常會在週末或假期發動攻擊，因為這時回應速度最慢</li>
+<li>事後的透明度和溝通對於維護社群信任至關重要</li>
+<li>每次事故都是改進安全流程的機會</li>
+</ul>
+<h2 id="白話總結"><a class="header" href="#白話總結">白話總結</a></h2>
+<p>安全不是審一次 code 就結束，而是整個開發到營運流程都要可驗證、可追責。區塊鏈系統的攻擊面非常廣，不只是合約程式碼本身——前端被篡改、私鑰被盜、預言機被操控、跨鏈橋 validator 被攻陷，每一個環節都可能成為攻擊者的突破口。</p>
+<p>歷史上最慘烈的安全事故往往不是因為某行程式碼寫錯了，而是因為整個系統的安全架構有根本性的缺陷。例如 Ronin Bridge 的問題不是合約有 bug，而是 9 個 validator 中有 5 個由同一個組織控制。BadgerDAO 的問題不是合約有漏洞，而是前端被注入了惡意腳本讓用戶簽署了惡意授權。</p>
+<p>防禦的核心理念是「深度防禦」：預防、偵測、回應、恢復四層防線缺一不可。寫出安全的合約只是第一步（預防），你還需要即時監控偵測異常行為、在攻擊發生時能快速暫停止血、以及攻擊結束後能正確地追蹤資金和補償用戶。</p>
+<p>測試也不能只做 unit test 就覺得夠了。不變量測試能發現系統級的邏輯漏洞，模糊測試能發現邊界條件的問題，主網分叉模擬能測試在真實狀態下的行為。這些測試方法需要組合使用，因為沒有任何一種方法能覆蓋所有的攻擊向量。</p>
+<p>最後，營運安全是持續性的工作，不是做一次就完成的。定期的密鑰輪替、交易前模擬、雙人覆核、安全意識培訓、以及事故演練，都是確保系統長期安全運行的必要投入。安全是一場馬拉松，不是短跑。</p>
 
                     </main>
 

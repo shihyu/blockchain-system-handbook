@@ -179,57 +179,503 @@
                     <main>
                         <h1 id="6-交易生命週期與-gas-市場"><a class="header" href="#6-交易生命週期與-gas-市場">6. 交易生命週期與 Gas 市場</a></h1>
 <h2 id="61-生命週期"><a class="header" href="#61-生命週期">6.1 生命週期</a></h2>
-<ol>
-<li>建構交易（nonce/gas/data/value）</li>
-<li>本地或服務端模擬</li>
-<li>簽名</li>
-<li>廣播到 mempool</li>
-<li>打包出塊</li>
-<li>達到確認與最終性</li>
-</ol>
-<h2 id="62-evm-gaseip-1559"><a class="header" href="#62-evm-gaseip-1559">6.2 EVM Gas（EIP-1559）</a></h2>
+<p>一筆區塊鏈交易從構思到最終確認，會經歷多個明確的階段。每個階段都有可能出錯，你的系統必須能夠追蹤和處理每一個狀態。以下是 EVM 鏈上交易的完整生命週期。</p>
+<h3 id="1-建構交易nonce--gas--data--value"><a class="header" href="#1-建構交易nonce--gas--data--value">1. 建構交易（nonce / gas / data / value）</a></h3>
+<p>交易建構是第一步，你需要組裝一個包含以下欄位的交易物件：</p>
 <ul>
-<li><code>baseFee</code>: 協議燃燒</li>
-<li><code>priorityFee</code>: 給出塊者小費</li>
-<li><code>maxFee</code>: 使用者可接受上限</li>
+<li><strong>nonce</strong>：發送者帳戶的交易序號，必須嚴格遞增。查詢方式：<code>eth_getTransactionCount(address, "pending")</code></li>
+<li><strong>to</strong>：目標地址。合約呼叫時是合約地址，部署合約時為 null</li>
+<li><strong>value</strong>：轉帳的 ETH 數量（以 wei 為單位，1 ETH = 10^18 wei）</li>
+<li><strong>data</strong>：合約呼叫時的 calldata（ABI 編碼後的函式選擇器 + 參數），純轉帳時可為空</li>
+<li><strong>gasLimit</strong>：本次交易最多可消耗的 Gas 上限</li>
+<li><strong>maxFeePerGas</strong> / <strong>maxPriorityFeePerGas</strong>：EIP-1559 的費用參數</li>
 </ul>
-<h2 id="63-交易失敗型態"><a class="header" href="#63-交易失敗型態">6.3 交易失敗型態</a></h2>
-<ul>
-<li>Out of gas</li>
-<li>Revert（require/assert/custom error）</li>
-<li>Nonce too low/high</li>
-<li>Slippage 保護觸發</li>
-</ul>
-<h2 id="64-mev-與排序風險"><a class="header" href="#64-mev-與排序風險">6.4 MEV 與排序風險</a></h2>
-<ul>
-<li>Front-running</li>
-<li>Sandwich attack</li>
-<li>Back-running</li>
-</ul>
-<p>工程手段：</p>
-<ul>
-<li>私有 RPC / Builder 直連</li>
-<li>交易批次化</li>
-<li>價格保護與 deadline</li>
-</ul>
-<h2 id="65-狀態機視角"><a class="header" href="#65-狀態機視角">6.5 狀態機視角</a></h2>
-<pre><code class="language-text">Draft -&gt; Signed -&gt; Pending -&gt; Included -&gt; Confirmed(k) -&gt; Finalized
-                    |             |
-                    |             +-&gt; Reverted
-                    +-&gt; Dropped/Replaced
+<pre><code class="language-python"># Pseudocode: 交易建構範例
+tx = {
+    "chainId": 1,                          # Ethereum Mainnet
+    "nonce": await get_nonce(sender),       # 當前帳戶 nonce
+    "to": "0xdAC17F958D2ee523a2206206994597C13D831ec7",  # USDT 合約
+    "value": 0,                            # 不轉 ETH
+    "data": encode_abi(                    # ABI 編碼
+        "transfer(address,uint256)",
+        [recipient, amount]
+    ),
+    "maxFeePerGas": base_fee * 2 + priority_fee,
+    "maxPriorityFeePerGas": priority_fee,
+    "gas": estimated_gas * 1.2,            # 留 20% 緩衝
+}
 </code></pre>
-<h2 id="66-utxo-交易生命週期"><a class="header" href="#66-utxo-交易生命週期">6.6 UTXO 交易生命週期</a></h2>
+<p><strong>常見陷阱</strong>：<code>gasLimit</code> 設太低會導致 out of gas（交易失敗但 Gas 照扣），設太高不會多收費（只收實際消耗量），但會佔用區塊空間，影響打包優先度。建議使用 <code>eth_estimateGas</code> 的結果乘以 1.1-1.2 的安全係數。</p>
+<h3 id="2-本地或服務端模擬"><a class="header" href="#2-本地或服務端模擬">2. 本地或服務端模擬</a></h3>
+<p>在簽名和廣播之前，應該先用 <code>eth_call</code> 模擬交易的執行結果。模擬會在 EVM 中「假裝」執行這筆交易，返回執行結果或錯誤資訊，但不會真的改變鏈上狀態。</p>
+<p>模擬的價值在於：</p>
+<ul>
+<li><strong>避免浪費 Gas</strong>：如果交易會 revert，模擬會提前告訴你，省去上鏈後才發現失敗的成本</li>
+<li><strong>預測結果</strong>：可以看到代幣餘額的變化，確認交易行為符合預期</li>
+<li><strong>安全檢查</strong>：模擬可以偵測到一些詐騙合約（例如只能買不能賣的 token）</li>
+</ul>
+<pre><code class="language-text">模擬流程：
+
+  建構好的交易 (unsigned)
+        │
+        v
+  ┌─────────────────────────────┐
+  │ eth_call (模擬)              │
+  │                             │
+  │ 成功 → 返回執行結果          │
+  │   - return data             │
+  │   - gas used                │
+  │   - state changes (trace)   │
+  │                             │
+  │ 失敗 → 返回 revert reason   │
+  │   - "insufficient balance"  │
+  │   - "slippage too high"     │
+  │   - custom error bytes      │
+  └──────────────┬──────────────┘
+                 │
+        ┌────────┴────────┐
+        v                 v
+   模擬成功            模擬失敗
+   → 進入簽名          → 停止，調查原因
+</code></pre>
+<p><strong>進階工具</strong>：Tenderly、Blocknative 等第三方服務提供更詳細的模擬結果，包括完整的 execution trace、state diff、event logs，甚至可以模擬多筆交易的組合執行效果。</p>
+<h3 id="3-簽名"><a class="header" href="#3-簽名">3. 簽名</a></h3>
+<p>使用私鑰對序列化後的交易資料進行 ECDSA 簽名，產出 <code>v</code>, <code>r</code>, <code>s</code> 三個值。簽名後的交易可以被任何節點驗證——只要從簽名中恢復出的公鑰對應的地址與 <code>from</code> 欄位一致即可。</p>
+<p>簽名是不可逆的——一旦你簽了一筆交易，任何人拿到這個簽名後的交易都可以廣播上鏈。因此，簽名前的所有檢查（策略、模擬、風控）都必須在簽名之前完成。</p>
+<h3 id="4-廣播到-mempool"><a class="header" href="#4-廣播到-mempool">4. 廣播到 Mempool</a></h3>
+<p>簽名後的交易透過 <code>eth_sendRawTransaction</code> 發送到 RPC 節點，節點會進行初步驗證（簽名正確、nonce 合法、餘額足夠支付 Gas）後放入本地 mempool，並透過 P2P 網路傳播給其他節點。</p>
+<p>這個階段的風險是<strong>交易被觀察和搶跑</strong>。任何人都可以訂閱 <code>pending transactions</code>，觀察你的交易內容。如果你的交易是一筆有利可圖的 DeFi 操作（如大額 swap），MEV 搜尋者可能會搶先執行類似交易來獲利。</p>
+<h3 id="5-打包出塊"><a class="header" href="#5-打包出塊">5. 打包出塊</a></h3>
+<p>出塊者（validator）從 mempool 中選擇交易打包進新區塊。在 PBS 架構下，實際的區塊組裝由 builder 完成，builder 根據 Gas 費排序交易以最大化收益，然後將區塊方案提交給 proposer。</p>
+<p>交易被打包進區塊後，會獲得一個確定的位置：block number + transaction index。此時交易的狀態從 <code>pending</code> 變為 <code>included</code>。</p>
+<h3 id="6-達到確認與最終性"><a class="header" href="#6-達到確認與最終性">6. 達到確認與最終性</a></h3>
+<p>交易被包含在區塊中並不意味著「最終確定」。在 Proof of Work 時代，需要等待多個後續區塊（如 Bitcoin 的 6 個確認）才能認為交易不可逆。在 Ethereum 的 Proof of Stake 機制下，交易需要等待約 12-15 分鐘才能達到 finality（最終性）——此後除非超過 1/3 的驗證者串謀作惡，否則交易無法被撤銷。</p>
+<pre><code class="language-text">確認等級與風險：
+
+  時間軸 ──────────────────────────────────────&gt;
+
+  Pending    Included   1 confirm  12 confirm  Finalized
+    │          │          │          │            │
+    │          │          │          │            │
+    ▼          ▼          ▼          ▼            ▼
+  風險: 高   風險: 中    風險: 低   風險: 極低   風險: ~0
+
+  可被 drop  可被 reorg  reorg 機率  接近不可逆  協議保證
+  或 replace 1-2 塊深    極低                   不可逆
+
+  業務建議:
+  - 小額 (&lt;$100):   1 confirm 即可確認
+  - 中額 ($100-10K): 12 confirms
+  - 大額 (&gt;$10K):   等待 finality
+  - 交易所入金:      根據幣種設定不同確認數
+</code></pre>
+<hr />
+<h2 id="62-evm-gaseip-1559"><a class="header" href="#62-evm-gaseip-1559">6.2 EVM Gas（EIP-1559）</a></h2>
+<p>EIP-1559 是 Ethereum 在 2021 年 London 升級中引入的費率機制改革，徹底改變了 Gas 費的計價方式。理解 EIP-1559 對於正確設定交易費用至關重要。</p>
+<h3 id="basefee-協議燃燒"><a class="header" href="#basefee-協議燃燒"><code>baseFee</code>: 協議燃燒</a></h3>
+<p>Base fee 是由協議根據前一個區塊的填充率自動計算的最低費用。<strong>這筆費用不會給任何人，而是直接被燃燒（銷毀）</strong>，減少 ETH 的流通量。</p>
+<p>Base fee 的調整規則：</p>
+<ul>
+<li>如果上一個區塊的 Gas 使用量超過目標值（15M Gas），base fee 上升，最多上升 12.5%</li>
+<li>如果低於目標值，base fee 下降，最多下降 12.5%</li>
+<li>目標是讓區塊平均約 50% 滿</li>
+</ul>
+<pre><code class="language-text">Base Fee 動態調整示意：
+
+  Block N:   Gas Used = 30M (100% 滿)  → baseFee 上升 12.5%
+  Block N+1: Gas Used = 25M (83% 滿)   → baseFee 上升 ~8%
+  Block N+2: Gas Used = 15M (50% 滿)   → baseFee 不變
+  Block N+3: Gas Used = 10M (33% 滿)   → baseFee 下降 ~4%
+  Block N+4: Gas Used = 0   (空塊)     → baseFee 下降 12.5%
+
+  baseFee
+    ▲
+    │    ╱╲
+    │   ╱  ╲
+    │  ╱    ╲───────╲
+    │ ╱               ╲
+    │╱                  ╲──
+    └───────────────────────&gt; 區塊
+         網路擁堵      正常    空閒
+</code></pre>
+<h3 id="priorityfee-給出塊者小費"><a class="header" href="#priorityfee-給出塊者小費"><code>priorityFee</code>: 給出塊者小費</a></h3>
+<p>Priority fee（也稱為 tip）是使用者額外支付給出塊者的費用，用於激勵出塊者將你的交易優先打包。在不擁堵時，1-2 gwei 的 priority fee 通常就足夠。在擁堵時，你需要提高 priority fee 才能被優先打包。</p>
+<h3 id="maxfee-使用者可接受上限"><a class="header" href="#maxfee-使用者可接受上限"><code>maxFee</code>: 使用者可接受上限</a></h3>
+<p><code>maxFeePerGas</code> 是使用者願意為每單位 Gas 支付的最高價格。實際支付的 Gas 費用為：<code>min(maxFeePerGas, baseFee + maxPriorityFeePerGas)</code>。如果 <code>maxFeePerGas</code> 低於當前的 <code>baseFee</code>，交易會留在 mempool 中等待 baseFee 下降。</p>
+<pre><code class="language-text">EIP-1559 費用計算：
+
+  使用者設定:
+    maxFeePerGas         = 100 gwei
+    maxPriorityFeePerGas = 2 gwei
+
+  當前狀態:
+    baseFee              = 30 gwei
+
+  實際費用:
+    effectiveGasPrice = baseFee + priorityFee
+                      = 30 + 2
+                      = 32 gwei
+
+  費用分配:
+    燃燒 (burn):      30 gwei × gasUsed → 從流通中移除
+    出塊者收入 (tip):  2 gwei × gasUsed → validator 收入
+    退還使用者:        (100 - 32) × gasUsed → 不收取
+
+  如果 baseFee 漲到 110 gwei:
+    → 交易無法被打包 (maxFee &lt; baseFee)
+    → 留在 mempool 等待 baseFee 下降
+    → 或使用者 speed up (重送更高 maxFee)
+</code></pre>
+<h3 id="gas-費估算策略"><a class="header" href="#gas-費估算策略">Gas 費估算策略</a></h3>
+<pre><code class="language-python"># Pseudocode: 動態 Gas 費估算
+async def estimate_gas_fees(rpc, urgency="normal"):
+    # 取得最新區塊的 baseFee
+    latest_block = await rpc.get_block("latest")
+    current_base_fee = latest_block["baseFeePerGas"]
+
+    # 取得歷史 priority fee 分佈
+    fee_history = await rpc.fee_history(
+        block_count=10,
+        newest_block="latest",
+        reward_percentiles=[25, 50, 75]
+    )
+
+    if urgency == "low":
+        # 不急: 目標下一個 baseFee，低 priority
+        max_priority = fee_history.reward[25th_percentile]
+        max_fee = current_base_fee * 1.1 + max_priority
+    elif urgency == "normal":
+        # 正常: 當前 baseFee 的 1.5 倍緩衝
+        max_priority = fee_history.reward[50th_percentile]
+        max_fee = current_base_fee * 1.5 + max_priority
+    elif urgency == "high":
+        # 緊急: 當前 baseFee 的 2 倍
+        max_priority = fee_history.reward[75th_percentile]
+        max_fee = current_base_fee * 2 + max_priority
+
+    return {
+        "maxFeePerGas": max_fee,
+        "maxPriorityFeePerGas": max_priority
+    }
+</code></pre>
+<hr />
+<h2 id="63-交易失敗型態"><a class="header" href="#63-交易失敗型態">6.3 交易失敗型態</a></h2>
+<p>交易失敗不是一個簡單的「成功/失敗」二元結果——不同的失敗模式有不同的原因、不同的 Gas 消耗行為、和不同的處理策略。</p>
+<h3 id="out-of-gas"><a class="header" href="#out-of-gas">Out of Gas</a></h3>
+<p>當交易執行過程中消耗的 Gas 超過了 <code>gasLimit</code>，EVM 會立即中止執行並 revert 所有狀態變更。<strong>但已消耗的 Gas 不會退還</strong>——這是最昂貴的失敗模式之一。</p>
+<p>常見原因：</p>
+<ul>
+<li><code>gasLimit</code> 設得太保守（例如使用固定值 21000，但實際是合約呼叫）</li>
+<li>合約中有無限迴圈或極深的遞迴</li>
+<li>合約升級後 Gas 消耗增加，但呼叫端沒有更新估算</li>
+</ul>
+<h3 id="revertrequire--assert--custom-error"><a class="header" href="#revertrequire--assert--custom-error">Revert（require / assert / custom error）</a></h3>
+<p>Revert 是合約主動拒絕執行。與 out of gas 不同，revert 會退還未使用的 Gas。</p>
+<pre><code class="language-solidity">// Solidity 中的 revert 來源
+function transfer(address to, uint256 amount) external {
+    // require: 條件不滿足時 revert，包含錯誤訊息
+    require(balanceOf[msg.sender] &gt;= amount, "Insufficient balance");
+
+    // assert: 理論上不應該發生的情況，用於捕捉 bug
+    assert(totalSupply &gt;= amount);
+
+    // custom error: Solidity 0.8.4+ 更省 Gas 的錯誤格式
+    if (to == address(0)) revert ZeroAddressNotAllowed();
+
+    balanceOf[msg.sender] -= amount;
+    balanceOf[to] += amount;
+}
+</code></pre>
+<p><strong>工程建議</strong>：你的系統應該解碼 revert reason，將其轉換為對使用者有意義的錯誤訊息。例如，<code>"Insufficient balance"</code> 可以告訴使用者他們的餘額不足，而不是顯示一個不明所以的交易失敗通知。</p>
+<h3 id="nonce-too-low--high"><a class="header" href="#nonce-too-low--high">Nonce Too Low / High</a></h3>
+<ul>
+<li><strong>Nonce too low</strong>：表示你提交的 nonce 已經被使用過。可能原因：交易已被打包但你的系統還不知道，或你正在重送一筆已確認的交易。</li>
+<li><strong>Nonce too high</strong>：你提交的 nonce 比預期的下一個 nonce 大。中間有 nonce 缺口，RPC 節點會拒絕這筆交易（某些節點會接受並放入 mempool 等待缺口被填補）。</li>
+</ul>
+<pre><code class="language-text">Nonce 錯誤場景：
+
+  帳戶當前 confirmed nonce: 5
+
+  提交 nonce = 3  → "Nonce too low" (已使用過)
+  提交 nonce = 5  → 正常 (下一筆應用的 nonce)
+  提交 nonce = 7  → "Nonce too high" (跳過 6)
+  提交 nonce = 5  → 如果之前 nonce=5 還在 pending，
+                     則為替換交易 (需更高 Gas)
+</code></pre>
+<h3 id="slippage-保護觸發"><a class="header" href="#slippage-保護觸發">Slippage 保護觸發</a></h3>
+<p>在 DEX 交易中，slippage tolerance（滑點容忍度）用於保護使用者免受價格大幅波動的影響。如果交易執行時的實際價格偏離預期超過設定的滑點，合約會 revert。</p>
+<p>典型場景：你設定 0.5% 的滑點容忍，但在你的交易被打包之前，有人執行了大額 swap 改變了價格。如果價格變動超過 0.5%，你的交易會 revert。這不是 bug，而是保護機制在正常工作。</p>
+<p><strong>但過寬的滑點設定是危險的</strong>——如果你設定 50% 的滑點，等於邀請三明治攻擊。MEV 搜尋者可以在你的交易前後各插一筆交易，先推高價格讓你以高價買入，再賣出獲利。</p>
+<hr />
+<h2 id="64-mev-與排序風險"><a class="header" href="#64-mev-與排序風險">6.4 MEV 與排序風險</a></h2>
+<p>MEV（Maximal Extractable Value）是指區塊生產者（或與其合作的搜尋者）通過重新排序、插入或移除區塊中的交易所能獲取的最大利潤。MEV 是區塊鏈系統中一個深刻的結構性問題，對交易工程有直接影響。</p>
+<h3 id="front-running"><a class="header" href="#front-running">Front-running</a></h3>
+<p>搶跑（front-running）是指觀察到使用者的待處理交易後，搶先提交一筆類似的交易以從中獲利。經典場景是在 DEX 上：搜尋者看到你即將以市價買入大量 token，就搶先買入推高價格，你被迫以更高價成交。</p>
+<pre><code class="language-text">Front-running 攻擊流程：
+
+  時間軸 ────────────────────────────────&gt;
+
+  1. User 提交: swap 100 ETH → TokenA
+     (mempool 中可見)
+         │
+         v
+  2. Searcher 觀察到大額 swap
+     Searcher 提交: swap 10 ETH → TokenA (更高 Gas)
+         │
+         v
+  3. 區塊打包順序:
+     ┌─────────────────────────┐
+     │ Tx1: Searcher 買入      │ ← 先執行，價格上升
+     │ Tx2: User 買入 (高價)   │ ← 被迫以更高價成交
+     └─────────────────────────┘
+
+  結果: User 多付了價差，Searcher 獲利
+</code></pre>
+<h3 id="sandwich-attack"><a class="header" href="#sandwich-attack">Sandwich Attack</a></h3>
+<p>三明治攻擊是 front-running 的進化版。攻擊者在目標交易前後各插入一筆交易：先買入推高價格（front-run），等目標交易以高價執行後，再賣出獲利（back-run）。</p>
+<pre><code class="language-text">Sandwich Attack 結構：
+
+  區塊中的交易順序:
+
+  ┌─────────────────────────────────────┐
+  │ Tx1 (Attacker): Buy TokenA          │  ← 推高價格
+  │                 花 10 ETH 買 1000 A │
+  │                                     │
+  │ Tx2 (Victim):   Buy TokenA          │  ← 以高價成交
+  │                 花 100 ETH 買 9500 A│  (本應得 10000 A)
+  │                                     │
+  │ Tx3 (Attacker): Sell TokenA         │  ← 賣出獲利
+  │                 賣 1000 A 得 10.5 ETH│
+  └─────────────────────────────────────┘
+
+  Attacker 利潤: 0.5 ETH
+  Victim 損失:   500 TokenA (約 0.5 ETH 等值)
+</code></pre>
+<h3 id="back-running"><a class="header" href="#back-running">Back-running</a></h3>
+<p>尾隨（back-running）是在某筆交易之後緊接著執行的套利行為。例如：某個大額 swap 改變了 DEX 的價格，back-runner 緊接著在不同 DEX 之間套利。Back-running 通常不傷害使用者（使用者的交易已正常執行），但它展示了 MEV 的普遍性。</p>
+<h3 id="工程防禦手段"><a class="header" href="#工程防禦手段">工程防禦手段</a></h3>
+<pre><code class="language-text">MEV 防護策略矩陣：
+
+┌──────────────────────┬─────────────────┬───────────────────┐
+│ 策略                 │ 防護效果        │ 代價              │
+├──────────────────────┼─────────────────┼───────────────────┤
+│ 私有 RPC / Builder   │ 避免 mempool    │ 依賴中心化服務    │
+│ (Flashbots Protect)  │ 曝光            │                   │
+├──────────────────────┼─────────────────┼───────────────────┤
+│ 交易批次化           │ 減少個別交易    │ 增加系統複雜度    │
+│ (Batch transactions) │ 被觀察的機會    │                   │
+├──────────────────────┼─────────────────┼───────────────────┤
+│ 嚴格滑點保護         │ 限制攻擊者      │ 可能導致交易      │
+│ (0.1-1% slippage)    │ 可獲利空間      │ 更容易失敗        │
+├──────────────────────┼─────────────────┼───────────────────┤
+│ Deadline 參數         │ 防止延遲執行    │ 需要合理設定      │
+│ (交易過期時間)        │                │                   │
+├──────────────────────┼─────────────────┼───────────────────┤
+│ Commit-Reveal 機制    │ 隱藏交易意圖    │ 需要兩筆交易      │
+│                      │ 直到揭露        │ 增加延遲和成本    │
+└──────────────────────┴─────────────────┴───────────────────┘
+</code></pre>
+<p><strong>實務建議</strong>：</p>
 <ol>
-<li>coin selection（選哪些 UTXO 當 inputs）</li>
-<li>估算 fee rate（sat/vB 等）</li>
-<li>產生 outputs（收款 + change）</li>
-<li>本地簽名（含 witness）</li>
-<li>廣播與 mempool 排序</li>
-<li>必要時 RBF/CPFP 加速</li>
-<li>入塊後按確認數提升信任等級</li>
+<li>
+<p><strong>DeFi 交易必設 deadline</strong>：在 Uniswap 等 DEX 交易中，永遠設定 <code>deadline</code> 參數（例如當前時間 + 300 秒）。沒有 deadline 的交易可能被刻意延遲到對攻擊者有利的時刻再執行。</p>
+</li>
+<li>
+<p><strong>使用 Flashbots Protect 或類似服務</strong>：對於主網上的高價值交易，通過 <code>https://rpc.flashbots.net</code> 發送交易，避免在公開 mempool 中曝光。</p>
+</li>
+<li>
+<p><strong>監控 MEV 損失</strong>：使用 EigenPhi、Flashbots Explorer 等工具，定期檢查你的地址是否曾遭受 MEV 攻擊，並據此調整防護策略。</p>
+</li>
 </ol>
-<h2 id="白話說明"><a class="header" href="#白話說明">白話說明</a></h2>
-<p>交易送出後不是「成功或失敗」兩種，而是一連串狀態轉換。你的系統要完整追蹤每個狀態。</p>
+<hr />
+<h2 id="65-狀態機視角"><a class="header" href="#65-狀態機視角">6.5 狀態機視角</a></h2>
+<p>從工程角度來看，交易的生命週期本質上是一個<strong>有限狀態機（Finite State Machine）</strong>。你的交易追蹤系統應該明確建模每個狀態和狀態轉換。</p>
+<pre><code class="language-text">交易狀態機完整定義：
+
+                  ┌──────────────────────┐
+                  │                      │
+                  v                      │
+  Draft ──→ Signed ──→ Pending ──→ Included ──→ Confirmed(k) ──→ Finalized
+                         │           │     │
+                         │           │     └──→ Reverted (交易失敗，但被包含在區塊中)
+                         │           │
+                         │           └──→ Uncle/Ommer (區塊被棄用，交易回到 Pending)
+                         │
+                         ├──→ Dropped (節點 mempool 滿，交易被丟棄)
+                         │
+                         └──→ Replaced (同 nonce 的新交易被打包，取代原交易)
+
+
+狀態轉換觸發條件：
+
+  Draft → Signed:       私鑰簽名完成
+  Signed → Pending:     廣播到至少一個節點
+  Pending → Included:   交易被打包進區塊
+  Pending → Dropped:    mempool 過期 (通常 ~6 小時) 或節點重啟
+  Pending → Replaced:   同 nonce 更高 Gas 的交易被打包
+  Included → Confirmed: 後續區塊持續增加
+  Included → Reverted:  交易執行失敗 (out of gas, require fail)
+  Included → Uncle:     區塊被 reorg 棄用
+  Confirmed → Finalized: 達到協議最終性 (PoS: ~12 min)
+</code></pre>
+<h3 id="狀態追蹤的工程實現"><a class="header" href="#狀態追蹤的工程實現">狀態追蹤的工程實現</a></h3>
+<pre><code class="language-python"># Pseudocode: Transaction State Machine
+from enum import Enum
+
+class TxState(Enum):
+    DRAFT = "draft"
+    SIGNED = "signed"
+    PENDING = "pending"
+    INCLUDED = "included"
+    CONFIRMED = "confirmed"
+    FINALIZED = "finalized"
+    REVERTED = "reverted"
+    DROPPED = "dropped"
+    REPLACED = "replaced"
+
+class TransactionTracker:
+    def __init__(self, tx_hash, rpc):
+        self.tx_hash = tx_hash
+        self.state = TxState.PENDING
+        self.block_number = None
+        self.confirmations = 0
+        self.rpc = rpc
+
+    async def poll_status(self):
+        receipt = await self.rpc.get_transaction_receipt(self.tx_hash)
+
+        if receipt is None:
+            # 仍在 mempool 或已被 drop
+            pending_tx = await self.rpc.get_transaction(self.tx_hash)
+            if pending_tx is None:
+                self.state = TxState.DROPPED
+            else:
+                self.state = TxState.PENDING
+            return
+
+        self.block_number = receipt["blockNumber"]
+
+        if receipt["status"] == 0:
+            self.state = TxState.REVERTED
+            return
+
+        latest_block = await self.rpc.get_block_number()
+        self.confirmations = latest_block - self.block_number + 1
+
+        if self.confirmations &gt;= FINALITY_THRESHOLD:  # e.g., 64 for Ethereum
+            self.state = TxState.FINALIZED
+        elif self.confirmations &gt;= CONFIRMATION_THRESHOLD:  # e.g., 12
+            self.state = TxState.CONFIRMED
+        else:
+            self.state = TxState.INCLUDED
+</code></pre>
+<p><strong>關鍵設計決策</strong>：</p>
+<ul>
+<li><strong>輪詢 vs 訂閱</strong>：可以用 <code>eth_subscribe("newHeads")</code> 監聽新區塊來觸發狀態更新，而非定時輪詢。但 WebSocket 連接可能斷開，因此需要 fallback 到輪詢機制。</li>
+<li><strong>Reorg 處理</strong>：即使交易已被確認 3 個區塊，仍有可能因為 reorg 而被撤銷。你的狀態機必須允許 <code>CONFIRMED → PENDING</code> 的回退。</li>
+<li><strong>Timeout 策略</strong>：如果交易在 mempool 中停留超過設定時間（如 30 分鐘），應該自動嘗試 speed up（重送更高 Gas）或 cancel（送同 nonce 的空交易）。</li>
+</ul>
+<hr />
+<h2 id="66-utxo-交易生命週期"><a class="header" href="#66-utxo-交易生命週期">6.6 UTXO 交易生命週期</a></h2>
+<p>Bitcoin 和其他 UTXO 模型的區塊鏈有著與 EVM 帳戶模型完全不同的交易結構。UTXO（Unspent Transaction Output）模型中，沒有「帳戶餘額」的概念——你的「餘額」是所有指向你地址的未花費交易輸出的總和。</p>
+<h3 id="1-coin-selection選哪些-utxo-當-inputs"><a class="header" href="#1-coin-selection選哪些-utxo-當-inputs">1. Coin Selection（選哪些 UTXO 當 inputs）</a></h3>
+<p>要建構一筆交易，首先要從你擁有的 UTXO 集合中選擇足夠的輸入。這個過程稱為 coin selection，是一個涉及隱私、費用和 UTXO 集合管理的最佳化問題。</p>
+<pre><code class="language-text">Coin Selection 範例：
+
+  你的 UTXO 集合：
+  ┌─────────────────────────────────┐
+  │ UTXO_1: 0.3 BTC (txid:abc...#0)│
+  │ UTXO_2: 0.5 BTC (txid:def...#1)│
+  │ UTXO_3: 1.2 BTC (txid:ghi...#2)│
+  │ UTXO_4: 0.1 BTC (txid:jkl...#0)│
+  └─────────────────────────────────┘
+
+  目標: 發送 0.7 BTC
+
+  策略 A (最少輸入): 使用 UTXO_3 (1.2 BTC)
+    → 找零 = 1.2 - 0.7 - fee ≈ 0.4998 BTC
+    → 優點: 交易體積小，費用低
+    → 缺點: 產生大額找零
+
+  策略 B (精確匹配): 使用 UTXO_1 + UTXO_2 (0.8 BTC)
+    → 找零 = 0.8 - 0.7 - fee ≈ 0.0998 BTC
+    → 優點: 找零小，隱私較好
+    → 缺點: 兩個輸入，交易體積略大
+</code></pre>
+<p>常見的 coin selection 演算法：</p>
+<ul>
+<li><strong>Largest First</strong>：選最大的 UTXO，簡單但可能產生大額找零</li>
+<li><strong>Branch and Bound</strong>：嘗試找到精確匹配（無找零）的組合</li>
+<li><strong>Random Selection</strong>：隨機選擇以提高隱私性</li>
+</ul>
+<h3 id="2-估算-fee-ratesatvb-等"><a class="header" href="#2-估算-fee-ratesatvb-等">2. 估算 Fee Rate（sat/vB 等）</a></h3>
+<p>Bitcoin 的交易費用按照交易的虛擬位元組（virtual bytes, vB）計價，而非固定金額。你需要根據當前 mempool 的擁堵程度來設定適當的 fee rate。</p>
+<pre><code class="language-text">Bitcoin Fee Rate 估算：
+
+  Mempool 狀態:
+  ┌────────────────────────────────────┐
+  │ 下一區塊 (≤10 min): 50+ sat/vB   │
+  │ 1-3 區塊 (≤30 min): 30-50 sat/vB │
+  │ 3-6 區塊 (≤1 hour): 10-30 sat/vB │
+  │ 低優先 (數小時):    1-10 sat/vB   │
+  └────────────────────────────────────┘
+
+  交易大小估算:
+  - P2WPKH 1-in-1-out: ~110 vB
+  - P2WPKH 2-in-2-out: ~208 vB
+  - P2TR  1-in-1-out:  ~112 vB
+
+  費用計算:
+  交易費 = fee_rate (sat/vB) × 交易大小 (vB)
+  例: 50 sat/vB × 208 vB = 10,400 sat ≈ 0.000104 BTC
+</code></pre>
+<h3 id="3-產生-outputs收款--change"><a class="header" href="#3-產生-outputs收款--change">3. 產生 Outputs（收款 + Change）</a></h3>
+<p>一筆 UTXO 交易通常有兩個輸出：一個是給收款人的金額，另一個是找零（change）——把多餘的金額退回給自己。找零地址通常使用新的地址以提高隱私性。</p>
+<p><strong>常見陷阱</strong>：如果你忘記加上找零輸出，所有的「多餘」金額都會變成礦工費。曾有使用者因為這個錯誤付了 500 BTC 的手續費。</p>
+<h3 id="4-本地簽名含-witness"><a class="header" href="#4-本地簽名含-witness">4. 本地簽名（含 Witness）</a></h3>
+<p>在 SegWit（隔離見證）交易中，簽名資料被放在 witness 區域，不計入傳統的交易大小。這有效降低了交易費用，並解決了交易延展性（transaction malleability）問題。</p>
+<h3 id="5-廣播與-mempool-排序"><a class="header" href="#5-廣播與-mempool-排序">5. 廣播與 Mempool 排序</a></h3>
+<p>Bitcoin 的 mempool 按 fee rate 排序。與 Ethereum 不同，Bitcoin 沒有 nonce 的概念——同一個地址的多筆交易之間不需要嚴格排序（但花費同一個 UTXO 的交易會互相衝突）。</p>
+<h3 id="6-必要時-rbf--cpfp-加速"><a class="header" href="#6-必要時-rbf--cpfp-加速">6. 必要時 RBF / CPFP 加速</a></h3>
+<p>如果交易卡在 mempool 中，有兩種加速方式：</p>
+<ul>
+<li><strong>RBF（Replace-By-Fee）</strong>：重新建構一筆花費相同 UTXO 但 fee rate 更高的交易。原交易必須在建構時設定了 RBF 信號（nSequence &lt; 0xFFFFFFFE）。</li>
+<li><strong>CPFP（Child-Pays-For-Parent）</strong>：建構一筆新交易花費卡住交易的找零輸出，並為新交易設定足夠高的 fee rate。礦工為了收取子交易的費用，會連同父交易一起打包。</li>
+</ul>
+<pre><code class="language-text">RBF vs CPFP 比較：
+
+  RBF (Replace-By-Fee):
+  ┌──────────────────────────────┐
+  │ 原交易 (5 sat/vB) → 作廢    │
+  │ 替換交易 (50 sat/vB) → 打包 │
+  │                              │
+  │ 條件: 原交易設有 RBF 信號    │
+  │ 優點: 可以修改任何欄位       │
+  │ 缺點: 接收者看到交易消失     │
+  └──────────────────────────────┘
+
+  CPFP (Child-Pays-For-Parent):
+  ┌──────────────────────────────┐
+  │ 父交易 (5 sat/vB) ─┐        │
+  │                     │ 一起   │
+  │ 子交易 (100 sat/vB)─┘ 打包   │
+  │                              │
+  │ 條件: 有可花費的找零輸出     │
+  │ 優點: 不影響原交易           │
+  │ 缺點: 額外交易費用           │
+  └──────────────────────────────┘
+</code></pre>
+<h3 id="7-入塊後按確認數提升信任等級"><a class="header" href="#7-入塊後按確認數提升信任等級">7. 入塊後按確認數提升信任等級</a></h3>
+<p>Bitcoin 沒有協議層的最終性保證——理論上任何交易都可以被更長的鏈覆蓋。但隨著後續區塊的增加，覆蓋的計算成本呈指數級增長。業界慣例的確認數：</p>
+<ul>
+<li>小額交易：1-2 個確認（10-20 分鐘）</li>
+<li>中等金額：3-6 個確認（30-60 分鐘）</li>
+<li>大額交易（交易所入金）：6 個確認（約 1 小時）</li>
+<li>極大額交易：可能要求 30-60 個確認</li>
+</ul>
+<hr />
+<h2 id="白話總結"><a class="header" href="#白話總結">白話總結</a></h2>
+<p>一筆交易從你按下「發送」到真正「不可逆」，中間要經過建構、模擬、簽名、廣播、進入 mempool、被打包出塊、累積確認數、最終達到 finality 這一連串的步驟。你的系統不能只關心「成功」和「失敗」兩種結果——交易可能卡在 mempool（pending）、被更高 Gas 的交易替換（replaced）、被節點丟棄（dropped）、執行失敗但仍被包含在區塊中（reverted）、甚至已經確認又因為 reorg 而被撤銷。Gas 費不是一個固定數字，它是一個動態市場——base fee 根據網路擁堵程度自動調整，priority fee 是你給出塊者的小費。MEV 是一個你必須面對的現實：如果你的大額 DeFi 交易在公開 mempool 中暴露，搜尋者可能會搶跑或三明治攻擊你。防禦手段包括使用私有交易通道、設定嚴格的滑點保護、以及為交易設定 deadline。UTXO 模型（Bitcoin）和帳戶模型（Ethereum）的交易結構完全不同——UTXO 沒有 nonce，但有 coin selection 和找零的問題。不管是哪種模型，你的交易追蹤系統都必須建模為完整的狀態機，覆蓋每一種可能的狀態和轉換路徑。</p>
 
                     </main>
 

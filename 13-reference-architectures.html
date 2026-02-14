@@ -178,53 +178,280 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="13-參考架構藍圖"><a class="header" href="#13-參考架構藍圖">13. 參考架構藍圖</a></h1>
+<p>本章提供三種常見區塊鏈系統的參考架構：消費級 DApp、機構級資產系統、以及 DAO 治理架構。每一種架構對應不同的工程優先級與風險模型，實務中應根據團隊規模、法遵要求、以及目標用戶群體來選擇或混合使用。</p>
+<p>架構選擇的核心決策往往不是技術問題，而是優先級的取捨。消費級 DApp 追求使用者體驗與成本效率，機構級系統強調安全可控與合規，DAO 則需要在去中心化治理與執行效率之間找到平衡。理解這三者的差異，有助於在設計初期就避免走錯方向。</p>
+<hr />
 <h2 id="131-消費級-dapp"><a class="header" href="#131-消費級-dapp">13.1 消費級 DApp</a></h2>
-<pre><code class="language-text">Frontend (Web/Mobile)
-   |
-Backend API --- Cache/DB
-   |
-Tx Service --- Simulation --- Risk Rules
-   |
-Wallet Adapter (EOA/AA)
-   |
-RPC Pool -&gt; L2 (main) + L1 (settlement)
+<pre><code class="language-text">┌───────────────────────────────────────────────────────┐
+│                   Frontend (Web/Mobile)                │
+│        React/Next.js + WalletConnect/RainbowKit       │
+└─────────────────────┬─────────────────────────────────┘
+                      │ REST/GraphQL
+                      v
+┌───────────────────────────────────────────────────────┐
+│              Backend API (Node.js / Go / Rust)        │
+│         ┌─────────────┬──────────────┐                │
+│         │ Auth/Session │  Business    │                │
+│         │   Service    │  Logic       │                │
+│         └──────┬──────┴──────┬───────┘                │
+│                │             │                        │
+│         ┌──────v──────┐ ┌───v──────────┐              │
+│         │  Cache/DB   │ │  Event Index │              │
+│         │ Redis/PG    │ │  (Subgraph)  │              │
+│         └─────────────┘ └──────────────┘              │
+└─────────────────────┬─────────────────────────────────┘
+                      │
+                      v
+┌───────────────────────────────────────────────────────┐
+│                   Tx Service Layer                     │
+│    ┌────────────┬──────────────┬────────────┐         │
+│    │ Simulation │  Risk Rules  │  Gas Mgmt  │         │
+│    │ (Tenderly) │  (limits,    │  (oracle,  │         │
+│    │            │   blacklist) │   buffer)  │         │
+│    └────────────┴──────────────┴────────────┘         │
+└─────────────────────┬─────────────────────────────────┘
+                      │
+                      v
+┌───────────────────────────────────────────────────────┐
+│           Wallet Adapter (EOA / AA / Social Login)    │
+│      MetaMask | WalletConnect | ERC-4337 Bundler      │
+└─────────────────────┬─────────────────────────────────┘
+                      │
+                      v
+┌───────────────────────────────────────────────────────┐
+│              RPC Pool (Load Balanced)                  │
+│        ┌──────────────┬──────────────────┐            │
+│        │   L2 (Main)  │  L1 (Settlement) │            │
+│        │  Arbitrum /   │  Ethereum        │            │
+│        │  Optimism /   │  Mainnet         │            │
+│        │  Base         │                  │            │
+│        └──────────────┴──────────────────┘            │
+└───────────────────────────────────────────────────────┘
 </code></pre>
-<p>特性:</p>
+<h3 id="架構說明"><a class="header" href="#架構說明">架構說明</a></h3>
+<p>消費級 DApp 的核心目標是讓普通用戶能以最低門檻使用區塊鏈應用。這意味著前端體驗必須接近 Web2 水準，交易成本必須控制在用戶可接受的範圍內，且錢包連接流程要盡量順暢。</p>
+<p>在前端層，現代 DApp 通常使用 React 或 Next.js 搭配 WalletConnect 或 RainbowKit 等錢包整合套件。前端不應直接構造交易，而是透過 Backend API 來處理交易邏輯。這樣做的好處是可以在後端加入模擬、風控、以及 gas 管理邏輯，避免用戶因交易失敗而浪費 gas fee。</p>
+<p>Transaction Service Layer 是這個架構中最關鍵的中間層。它負責三件事：首先是交易模擬（使用 Tenderly 或 fork 模式在本地模擬交易結果），確保交易不會失敗；其次是風控規則（檢查交易金額、目標地址是否在黑名單中）；最後是 gas 管理（從 gas oracle 取得當前費率，加上適當 buffer，並管理 nonce 序列）。</p>
+<h3 id="特性"><a class="header" href="#特性">特性</a></h3>
 <ul>
-<li>成本優先，主要跑 L2</li>
-<li>小額交易可用 account abstraction 改善 UX</li>
-<li>後台做 nonce/gas/重試策略</li>
+<li><strong>成本優先，主要跑 L2</strong>：L2 的交易費用通常只有 L1 的 1/10 到 1/100，對於頻繁小額交易的 DApp 來說，這是決定性的成本優勢。選擇哪條 L2 取決於生態（Arbitrum 的 DeFi 生態最完整）、工具鏈支援、以及社群活躍度。</li>
+<li><strong>小額交易可用 Account Abstraction 改善 UX</strong>：ERC-4337 允許用戶用 social login 創建智能合約錢包，支持 session key（免重複簽名）、gas sponsorship（項目方代付 gas）、以及 batch transaction（多筆交易打包）。這大幅降低了新用戶的進入門檻。</li>
+<li><strong>後台做 nonce/gas/重試策略</strong>：Nonce 管理是 DApp 後端最容易出問題的地方。當多筆交易並發送出時，nonce 衝突會導致交易失敗。最佳實踐是在後端維護一個 nonce pool，使用 Redis 做原子遞增，並在交易失敗時自動重試。Gas 估算則需要考慮網路擁塞的波動，通常會在 estimated gas 上加 20-30% buffer。</li>
 </ul>
+<h3 id="實際案例"><a class="header" href="#實際案例">實際案例</a></h3>
+<p>以一個 NFT 市場為例，用戶在前端瀏覽 NFT、下單購買時，後端會：</p>
+<ol>
+<li>驗證用戶身份與餘額</li>
+<li>模擬購買交易（確認合約可正常執行）</li>
+<li>估算 gas 費用並加上 buffer</li>
+<li>分配 nonce 並送出交易</li>
+<li>監聽交易狀態，失敗時自動以更高 gas price 重試（最多 3 次）</li>
+</ol>
+<h3 id="常見陷阱"><a class="header" href="#常見陷阱">常見陷阱</a></h3>
+<ul>
+<li><strong>RPC 單點故障</strong>：只用一個 RPC provider 是最常見的錯誤。應建立 RPC pool，至少包含 2-3 個 provider（如 Alchemy + Infura + 自建節點），並實作自動 failover。</li>
+<li><strong>前端直接構造交易</strong>：這會將風控邏輯暴露在客戶端，任何人都可以繞過檢查直接呼叫合約。交易構造應在後端完成。</li>
+<li><strong>忽略交易模擬</strong>：不做模擬就直接送出交易，會導致大量 gas 浪費在必定失敗的交易上。</li>
+</ul>
+<hr />
 <h2 id="132-機構級資產系統"><a class="header" href="#132-機構級資產系統">13.2 機構級資產系統</a></h2>
-<pre><code class="language-text">Client Portal
-   |
-Workflow Engine (approval)
-   |
-Treasury Service ---- Accounting Core
-   |
-MPC/Multisig Cluster ---- HSM
-   |
-Policy Engine (limit/timelock/allowlist)
-   |
-Execution Gateway -&gt; Multi-chain Nodes
-   |
-Monitoring/SIEM + Incident Center
+<pre><code class="language-text">┌───────────────────────────────────────────────────────────────┐
+│                     Client Portal                              │
+│            (Web Dashboard / API Integration)                   │
+│         Multi-tenant | Role-based Access Control               │
+└──────────────────────────┬────────────────────────────────────┘
+                           │ mTLS / API Key
+                           v
+┌───────────────────────────────────────────────────────────────┐
+│                   Workflow Engine (Approval)                    │
+│     ┌─────────────────────────────────────────┐                │
+│     │  Request → Review → Approve → Execute   │                │
+│     │      │         │        │        │       │                │
+│     │  Maker-1   Checker-1  Approver  System   │                │
+│     │  (initiate) (verify) (sign-off) (submit) │                │
+│     └─────────────────────────────────────────┘                │
+│     4-eyes principle | Configurable approval chains            │
+└──────────────────────────┬────────────────────────────────────┘
+                           │
+              ┌────────────┴─────────────┐
+              v                          v
+┌─────────────────────────┐  ┌──────────────────────────┐
+│   Treasury Service      │  │    Accounting Core       │
+│  - Hot/Warm/Cold split  │  │  - Double-entry ledger   │
+│  - Rebalancing rules    │  │  - NAV calculation       │
+│  - Liquidity thresholds │  │  - Reconciliation engine │
+└────────────┬────────────┘  └──────────────────────────┘
+             │
+             v
+┌───────────────────────────────────────────────────────────────┐
+│              MPC / Multisig Cluster + HSM                      │
+│     ┌───────────┐  ┌───────────┐  ┌───────────┐               │
+│     │  MPC Node │  │  MPC Node │  │  MPC Node │               │
+│     │  (Shard1) │  │  (Shard2) │  │  (Shard3) │               │
+│     └─────┬─────┘  └─────┬─────┘  └─────┬─────┘               │
+│           └───────────┬───┘───────────────┘                    │
+│                       v                                        │
+│              ┌────────────────┐                                │
+│              │  HSM (FIPS 140)│                                │
+│              │  Key Storage   │                                │
+│              └────────────────┘                                │
+└──────────────────────────┬────────────────────────────────────┘
+                           │
+                           v
+┌───────────────────────────────────────────────────────────────┐
+│                    Policy Engine                               │
+│    ┌──────────┬────────────┬─────────────┬─────────────┐       │
+│    │  Limit   │  Timelock  │  Allowlist  │  Velocity   │       │
+│    │  Check   │  Enforce   │  Verify     │  Control    │       │
+│    └──────────┴────────────┴─────────────┴─────────────┘       │
+└──────────────────────────┬────────────────────────────────────┘
+                           │
+                           v
+┌───────────────────────────────────────────────────────────────┐
+│              Execution Gateway -&gt; Multi-chain Nodes            │
+│        ┌──────────┬──────────┬──────────┬──────────┐           │
+│        │ Ethereum │ Bitcoin  │ Solana   │ Others   │           │
+│        │  Node    │  Node    │  Node    │  Nodes   │           │
+│        └──────────┴──────────┴──────────┴──────────┘           │
+└──────────────────────────┬────────────────────────────────────┘
+                           │
+                           v
+┌───────────────────────────────────────────────────────────────┐
+│              Monitoring / SIEM + Incident Center               │
+│    - 全鏈路交易追蹤  - 異常行為偵測  - 自動降級機制          │
+│    - 合規報告生成    - 事件回應流程  - 災難復原演練          │
+└───────────────────────────────────────────────────────────────┘
 </code></pre>
-<p>特性:</p>
+<h3 id="架構說明-1"><a class="header" href="#架構說明-1">架構說明</a></h3>
+<p>機構級資產系統（如 custodial wallet、fund management platform、exchange hot wallet 系統）的設計哲學與消費級 DApp 完全不同。消費級追求「快速、便宜、好用」，機構級追求「安全、可控、可稽核」。任何一筆交易的發起，都必須經過嚴格的審批流程（maker-checker principle），確保沒有單一個人能獨自控制大額資金。</p>
+<p>Workflow Engine 是機構架構的核心差異化元件。每一筆交易（特別是出金）都必須經過 4-eyes principle（至少兩人審核）。典型的流程是：交易發起者（maker）提交請求 -&gt; 審核者（checker）驗證交易細節 -&gt; 核准者（approver）最終簽核 -&gt; 系統自動執行。對於超過特定金額門檻的交易，可能需要更多層級的審核，甚至需要 C-level 的簽核。</p>
+<p>Treasury Service 負責資金的冷熱分層管理。機構通常將資產分為三層：Hot Wallet（線上、自動化、小額）占 5-10% 的總資產，用於日常營運；Warm Wallet（半線上、需人工觸發）占 20-30%，用於中等規模的調度；Cold Wallet（完全離線、物理保管）占 60-75%，用於長期儲存。系統需要自動監控 Hot Wallet 的餘額，當低於設定門檻時自動觸發從 Warm Wallet 的補充流程。</p>
+<h3 id="特性-1"><a class="header" href="#特性-1">特性</a></h3>
 <ul>
-<li>安全優先，多簽 + MPC + 冷熱分層</li>
-<li>完整稽核追蹤與法遵資料</li>
-<li>強調災難復原演練</li>
+<li>
+<p><strong>安全優先，多簽 + MPC + 冷熱分層</strong>：MPC（Multi-Party Computation）與 Multisig 是互補的安全機制。MPC 將私鑰分片分散到多個獨立的計算節點，任何單一節點都無法獨自簽名。搭配 HSM（Hardware Security Module，通過 FIPS 140-2 認證的硬體安全模組）來保護密鑰分片，可以達到銀行級別的安全標準。現代機構級系統（如 Fireblocks、Copper）多採用 MPC-TSS（Threshold Signature Scheme），因為它在鏈上只產生一個標準簽名，與普通 EOA 交易無異，既節省 gas 又保護隱私。</p>
+</li>
+<li>
+<p><strong>完整稽核追蹤與法遵資料</strong>：每一個操作（包括查看餘額、發起交易、審核交易、修改配置）都必須有完整的 audit trail。Accounting Core 需要實作 double-entry bookkeeping（複式記帳），確保鏈上資產變動能與內部帳本精確對帳。對於受監管的機構（如持牌交易所），還需要定期產出合規報告，包括 AML/KYT 報告、資產儲備證明（Proof of Reserves）等。</p>
+</li>
+<li>
+<p><strong>強調災難復原演練</strong>：機構系統必須有完整的 DR（Disaster Recovery）計畫，並且定期演練。這包括：MPC 節點全部失效時如何從備份恢復、HSM 故障時的替代簽名流程、以及主要雲端服務商中斷時的 failover 策略。業界建議每季至少做一次完整的 DR 演練，並記錄恢復所需時間（RTO）和可容忍的資料損失量（RPO）。</p>
+</li>
 </ul>
+<h3 id="實際案例交易所出金流程"><a class="header" href="#實際案例交易所出金流程">實際案例：交易所出金流程</a></h3>
+<pre><code class="language-text">1. 用戶提交提幣請求（前端/API）
+   │
+2. 風控引擎檢查：
+   ├── AML/KYT 掃描目標地址
+   ├── 24h 累計出金額度檢查
+   ├── 用戶行為異常偵測
+   └── 目標地址白名單比對
+   │
+3. 小額（&lt; $1,000）：自動審核 → Hot Wallet 直接出金
+   中額（$1K-$50K）：1 人審核 → Hot/Warm Wallet 出金
+   大額（&gt; $50K）：2 人審核 + Manager 簽核 → Warm/Cold Wallet 出金
+   │
+4. MPC 協同簽名 → 交易廣播
+   │
+5. 交易確認後更新內部帳本 + 通知用戶
+</code></pre>
+<h3 id="常見陷阱-1"><a class="header" href="#常見陷阱-1">常見陷阱</a></h3>
+<ul>
+<li><strong>Hot Wallet 資金比例過高</strong>：歷史上多起交易所被駭事件（Mt.Gox、Bitfinex）都與 Hot Wallet 存放過多資產有關。嚴格控制 Hot Wallet 比例（不超過總資產 10%）是基本底線。</li>
+<li><strong>MPC 節點部署在同一個雲端供應商</strong>：如果三個 MPC 節點都部署在 AWS，當 AWS 發生區域性故障時，整個簽名系統就癱瘓了。應分散部署在不同雲端供應商或地理區域。</li>
+<li><strong>缺乏鏈上鏈下對帳機制</strong>：不定期比對鏈上餘額與內部帳本，可能導致帳目不一致長期未被發現。建議每小時做一次自動對帳。</li>
+</ul>
+<hr />
 <h2 id="133-dao-治理架構"><a class="header" href="#133-dao-治理架構">13.3 DAO 治理架構</a></h2>
+<pre><code class="language-text">┌───────────────────────────────────────────────────────────────┐
+│                    Community / Token Holders                    │
+│              (Gov Token holders + Delegators)                  │
+└──────────────────────────┬────────────────────────────────────┘
+                           │ Vote / Delegate
+                           v
+┌───────────────────────────────────────────────────────────────┐
+│                   Governance Framework                          │
+│    ┌───────────────────────────────────────────────────┐       │
+│    │  Gov Token (ERC-20 Votes / veToken Model)        │       │
+│    │     │                                             │       │
+│    │     ├── Direct Vote (1 token = 1 vote)            │       │
+│    │     ├── Delegated Vote (delegate to experts)      │       │
+│    │     └── veToken Lock (longer lock = more weight)  │       │
+│    └───────────────────────────────────────────────────┘       │
+└──────────────────────────┬────────────────────────────────────┘
+                           │
+                           v
+┌───────────────────────────────────────────────────────────────┐
+│                   Proposal Lifecycle                            │
+│                                                                │
+│  Draft → Discussion → Temperature Check → Formal Vote         │
+│    │         │              │                  │               │
+│    │     Forum/Discord   Snapshot Poll    On-chain Vote        │
+│    │     (off-chain)     (off-chain)     (Governor contract)   │
+│    │                                          │               │
+│    │                                    ┌─────v──────┐        │
+│    │                                    │  Timelock   │        │
+│    │                                    │  (48-72h)   │        │
+│    │                                    └─────┬──────┘        │
+│    │                                          v               │
+│    │                                    ┌────────────┐        │
+│    │                                    │  Execution │        │
+│    │                                    └────────────┘        │
+└───────────────────────────────────────────────────────────────┘
+                           │
+                           v
+┌───────────────────────────────────────────────────────────────┐
+│                   Treasury Management                          │
+│    ┌───────────────────────────────────────────────────┐       │
+│    │  Multisig (Gnosis Safe) as transitional control  │       │
+│    │  - Core team holds initial keys                   │       │
+│    │  - Gradually add community signers               │       │
+│    │  - Eventually migrate to full on-chain governance│       │
+│    └───────────────────────────────────────────────────┘       │
+└───────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="架構說明-2"><a class="header" href="#架構說明-2">架構說明</a></h3>
+<p>DAO（Decentralized Autonomous Organization）治理架構的目標是讓社群能以去中心化的方式管理協議的升級、資金分配、以及參數調整。與前兩種架構不同，DAO 的「用戶」同時也是「管理者」，這帶來了獨特的設計挑戰。</p>
+<p>治理代幣（Governance Token）是 DAO 的基礎。常見的模型有兩種：簡單投票模型（1 token = 1 vote，如 Compound Governor）和 veToken 模型（鎖定代幣越久，投票權重越大，如 Curve 的 veCRV）。veToken 模型的優勢是激勵長期持有者參與治理，減少短期投機者對決策的影響。但其缺點是增加了系統複雜度，且可能導致投票權力集中在早期大戶手中。</p>
+<p>委託投票（Delegation）是提高治理參與度的關鍵機制。大多數 token holder 沒有時間或專業知識來評估每一個提案，透過將投票權委託給專業的 delegates（類似議員角色），可以在保持去中心化的同時提高決策品質。Arbitrum、Optimism、Uniswap 等知名協議都有活躍的 delegate 生態。</p>
+<h3 id="特性-2"><a class="header" href="#特性-2">特性</a></h3>
 <ul>
-<li>Gov Token + Delegate</li>
-<li>Proposal + Timelock + Execution</li>
-<li>Treasury Multisig 作為過渡控制</li>
-<li>漸進去中心化路線圖</li>
+<li>
+<p><strong>Gov Token + Delegate</strong>：投票權委託機制允許小額持有者將投票權委託給信任的代表，避免投票參與率過低導致少數人控制決策。設計要點包括：委託是可隨時撤銷的、delegate 的投票記錄應公開透明、以及需要防止「投票買賣」（bribery attack）。</p>
+</li>
+<li>
+<p><strong>Proposal + Timelock + Execution</strong>：提案流程通常分為多個階段。首先在論壇（如 Discourse）進行非正式討論，然後使用 Snapshot 進行 gas-free 的溫度檢查投票，最後才提交鏈上正式投票。通過的提案會進入 Timelock 合約（通常 48-72 小時），給予社群時間審查即將執行的變更，如果發現問題可以通過緊急取消機制阻止執行。</p>
+</li>
+<li>
+<p><strong>Treasury Multisig 作為過渡控制</strong>：多數 DAO 在初期會使用 Gnosis Safe（現稱 Safe）多簽來管理國庫資金。核心團隊持有初始的簽名者角色，隨著社群成熟，逐步增加社群成員作為簽名者，最終目標是完全遷移到鏈上治理控制國庫。</p>
+</li>
+<li>
+<p><strong>漸進去中心化路線圖</strong>：完全去中心化不是一蹴而就的。典型的路線圖是：Phase 1（核心團隊控制，multisig 管理）-&gt; Phase 2（部分鏈上治理，社群 delegate 參與）-&gt; Phase 3（完全鏈上治理，timelock 執行，核心團隊退出 multisig）。a16z 提出的 "Progressive Decentralization" 框架是業界常用的參考模型。</p>
+</li>
 </ul>
-<h2 id="白話說明"><a class="header" href="#白話說明">白話說明</a></h2>
-<p>小團隊先求可用，機構先求可控，DAO 先求共識。三者的工程重點不同，不可混用。</p>
+<h3 id="常見陷阱-2"><a class="header" href="#常見陷阱-2">常見陷阱</a></h3>
+<ul>
+<li><strong>治理攻擊（Governance Attack）</strong>：攻擊者通過閃電貸或短期借入大量治理代幣，提交並通過惡意提案，盜取國庫資金。防禦方式包括：投票前鎖倉要求、提案提交門檻、以及 Timelock 延遲。</li>
+<li><strong>投票冷感（Voter Apathy）</strong>：大部分 token holder 不參與投票，導致少數人可以低票通過提案。解決方式包括：降低參與門檻（gasless voting via Snapshot）、delegation 機制、以及投票獎勵。</li>
+<li><strong>提案品質低下</strong>：缺乏提案審查機制，導致大量低品質或有害提案浪費社群精力。建議設立提案門檻（如持有一定數量的治理代幣才能提案）並建立結構化的提案模板。</li>
+</ul>
+<h3 id="三種架構的比較"><a class="header" href="#三種架構的比較">三種架構的比較</a></h3>
+<pre><code class="language-text">┌──────────────┬──────────────┬──────────────┬──────────────┐
+│   維度       │  消費級 DApp │  機構級系統   │    DAO       │
+├──────────────┼──────────────┼──────────────┼──────────────┤
+│  首要目標    │  UX + 成本   │  安全 + 合規  │  共識 + 透明 │
+│  決策速度    │  即時         │  小時~天      │  天~週       │
+│  團隊規模    │  3-10 人     │  20-100 人    │  社群驅動    │
+│  密鑰管理    │  用戶自持/AA │  MPC+HSM     │  Multisig    │
+│  升級方式    │  Proxy       │  審批流程     │  提案投票    │
+│  監管需求    │  低           │  高           │  中（演進中）│
+│  風險模型    │  用戶自負     │  機構承擔     │  社群共擔    │
+└──────────────┴──────────────┴──────────────┴──────────────┘
+</code></pre>
+<hr />
+<h2 id="白話總結"><a class="header" href="#白話總結">白話總結</a></h2>
+<p>這一章列出三種區塊鏈系統的典型架構藍圖，它們的工程重點完全不同，不可以混用。消費級 DApp 的核心是讓用戶用得順手、交易成本低，所以大部分跑在 L2，後端負責 gas 管理和交易重試，前端注重錢包連接體驗。機構級系統的核心是「不能出事」，所以層層審批、多簽加 MPC、冷熱錢包分離、每一筆交易都有完整稽核記錄，寧可慢也不能錯。DAO 治理架構的核心是讓社群共同決策，透過投票、提案、Timelock 等機制來確保透明度和公平性，但代價是決策速度慢且容易出現投票冷感。</p>
+<p>選擇哪種架構取決於你的用戶是誰、你的團隊有多大、以及你面臨的監管環境。小團隊做消費端產品，用第一種就夠了；如果你管理的是機構資金或交易所資產，必須用第二種；如果你在建立一個社群驅動的協議，第三種是你的目標架構，但建議從 Multisig 開始、漸進去中心化。實務中，很多項目會混合使用這三種架構的元素，比如一個 DeFi 協議可能前端是消費級的架構，但國庫管理用機構級的安全標準，治理則用 DAO 模式。</p>
 
                     </main>
 

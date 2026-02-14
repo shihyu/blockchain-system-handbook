@@ -179,14 +179,105 @@
                     <main>
                         <h1 id="2-鏈類型與設計取捨"><a class="header" href="#2-鏈類型與設計取捨">2. 鏈類型與設計取捨</a></h1>
 <h2 id="21-公鏈類型"><a class="header" href="#21-公鏈類型">2.1 公鏈類型</a></h2>
-<ul>
-<li>UTXO 鏈: Bitcoin 類，強調可審計、並行花費檢查與簡潔腳本</li>
-<li>EUTXO 鏈: Cardano 類，把資料與腳本條件擴充到 UTXO</li>
-<li>Account 鏈: Ethereum 類，全球狀態 + 智能合約為中心</li>
-<li>高吞吐並行鏈: Solana/Sui 類，偏向執行效能與低延遲</li>
-<li>模組化鏈: DA / Execution / Settlement 拆分</li>
-</ul>
+<p>選擇在哪條鏈上構建系統，是區塊鏈工程師面對的第一個也是最重要的架構決策。不同鏈的設計哲學、狀態模型、執行環境和經濟模型截然不同，這些差異會從根本上影響你的系統架構、開發工具、測試策略和運維方式。以下是目前主流的公鏈類型分析。</p>
+<h3 id="utxo-鏈-bitcoin-類"><a class="header" href="#utxo-鏈-bitcoin-類">UTXO 鏈: Bitcoin 類</a></h3>
+<p>UTXO（Unspent Transaction Output）模型是 Bitcoin 的核心設計。在這個模型中，不存在「帳戶餘額」的概念——你的「餘額」是所有屬於你的、尚未被花費的交易輸出的總和。每一筆交易都是消耗（spend）一組 UTXO 作為輸入，產生一組新的 UTXO 作為輸出。</p>
+<p>這種設計有著深刻的工程含義：每個 UTXO 都是獨立的、自包含的價值單位，可以被獨立驗證，不需要查詢全域狀態。這使得 UTXO 模型天然具備較高的並行處理能力——只要兩筆交易不消耗同一個 UTXO，它們就可以被並行驗證。</p>
+<pre><code class="language-text">UTXO 交易模型:
+
+  輸入 (消耗舊 UTXO)          輸出 (產生新 UTXO)
+  ┌──────────────┐            ┌──────────────┐
+  │ UTXO_A: 3 BTC│──┐    ┌──&gt;│ UTXO_C: 2 BTC│ (收款方)
+  └──────────────┘  │    │   └──────────────┘
+  ┌──────────────┐  ├────┤   ┌──────────────┐
+  │ UTXO_B: 2 BTC│──┘    └──&gt;│ UTXO_D: 2.99 BTC│ (找零回自己)
+  └──────────────┘           └──────────────┘
+                              差額 0.01 BTC = 礦工手續費
+</code></pre>
+<p>Bitcoin 的腳本語言（Script）刻意設計為非圖靈完備，只支援有限的操作碼。這不是缺陷，而是有意的設計選擇——限制表達力換取可預測性和安全性。常見的腳本類型包括 P2PKH（Pay to Public Key Hash）、P2SH（Pay to Script Hash）、P2WPKH（SegWit）和 P2TR（Taproot）。</p>
+<h3 id="eutxo-鏈-cardano-類"><a class="header" href="#eutxo-鏈-cardano-類">EUTXO 鏈: Cardano 類</a></h3>
+<p>EUTXO（Extended UTXO）是 Cardano 對 UTXO 模型的擴展。核心創新是在每個 UTXO 上附加 Datum（資料）和 Redeemer（贖回條件），並用 Plutus 驗證器腳本（Validator Script）來定義花費條件。這使得 UTXO 模型可以表達複雜的智能合約邏輯，同時保留 UTXO 的並行性優勢。</p>
+<p>然而，EUTXO 的開發心智模型與傳統的 Account 模型有本質差異。在 Account 模型中，合約有一個持久的全域狀態，任何人都可以呼叫合約方法來修改它。在 EUTXO 中，「合約狀態」是一個 UTXO 上的 Datum，要修改它就必須消耗這個 UTXO 並產生一個新的 UTXO。這導致了一個著名的「並發問題」：如果多人同時試圖與同一個合約互動，他們都在試圖消耗同一個 UTXO，但只有一筆交易能成功。Cardano 生態通過各種 off-chain 協調機制和 batching 策略來緩解這個問題。</p>
+<pre><code class="language-text">EUTXO 合約互動:
+
+  ┌─────────────────────────────────┐
+  │ UTXO (合約狀態)                  │
+  │ Datum: { pool_a: 1000, pool_b: 500 } │
+  │ Value: 1500 ADA                  │
+  │ Validator: swap_validator.plutus │
+  └──────────────┬──────────────────┘
+                 │
+    消耗 (需提供 Redeemer: Swap { amount: 10 })
+                 │
+  ┌──────────────▼──────────────────┐
+  │ 新 UTXO (更新後合約狀態)          │
+  │ Datum: { pool_a: 1010, pool_b: 495 } │
+  │ Value: 1505 ADA                  │
+  │ Validator: swap_validator.plutus │
+  └─────────────────────────────────┘
+</code></pre>
+<h3 id="account-鏈-ethereum-類"><a class="header" href="#account-鏈-ethereum-類">Account 鏈: Ethereum 類</a></h3>
+<p>Account 模型是 Ethereum 的核心設計。系統維護一棵全域狀態樹（World State Trie），每個帳戶都有一個持久的狀態，包括餘額、nonce（交易計數器）、合約程式碼和儲存空間。交易的語義是「呼叫某個帳戶的某個方法，可能改變全域狀態」。</p>
+<p>Account 模型的最大優勢是開發者體驗——智能合約就像一個持久化的物件，有自己的狀態和方法，非常直覺。但這也帶來了全域狀態共享的挑戰：所有交易都在讀寫同一棵狀態樹，並行化受到嚴重限制。Ethereum 的 EVM 是單執行緒的，交易只能循序執行。</p>
+<pre><code class="language-text">Account 模型狀態:
+
+  World State Trie
+  ┌──────────────────────────────────────┐
+  │ 0xA1B2...  (EOA)                     │
+  │   balance: 10 ETH                    │
+  │   nonce: 42                          │
+  ├──────────────────────────────────────┤
+  │ 0xC3D4...  (Contract: Uniswap Pool) │
+  │   balance: 50000 ETH                │
+  │   nonce: 1                           │
+  │   code: 0x6080604052...              │
+  │   storage:                           │
+  │     slot[0]: reserve0                │
+  │     slot[1]: reserve1                │
+  │     slot[2]: totalSupply             │
+  └──────────────────────────────────────┘
+</code></pre>
+<p>Account 模型中最臭名昭著的安全問題是 Reentrancy（重入攻擊）。當合約 A 呼叫合約 B，而 B 在回呼中再次呼叫 A 時，A 可能還沒來得及更新自己的狀態，就被迫在舊狀態下再次執行邏輯。2016 年的 The DAO 事件（損失 6,000 萬美元、最終導致 Ethereum 硬分叉）就是 Reentrancy 攻擊的經典案例。</p>
+<h3 id="高吞吐並行鏈-solanasui-類"><a class="header" href="#高吞吐並行鏈-solanasui-類">高吞吐並行鏈: Solana/Sui 類</a></h3>
+<p>Solana 和 Sui/Aptos 代表了另一種設計哲學：犧牲一定程度的去中心化，換取極致的執行效能。Solana 使用 Proof of History（PoH）作為時間戳機制，搭配 Tower BFT 共識，在 400ms 的 slot 時間內處理交易。Sui 使用 Move 語言和物件導向的資料模型，對不涉及共享物件的交易可以跳過共識直接確認。</p>
+<p>這類鏈的工程挑戰與 Ethereum 完全不同：你不用太擔心 gas 優化（費用極低），但需要關注帳戶租金（Solana 的 rent）、交易大小限制、CU（Compute Unit）限制、以及高頻場景下的 RPC 壓力。Solana 的 RPC 節點在高峰期經常出現延遲或掉線，這對依賴實時鏈上資料的應用是嚴峻的挑戰。</p>
+<pre><code class="language-text">Solana 並行執行模型:
+
+  交易宣告存取的帳戶:
+  Tx1: [Account_A, Account_B]     ─┐
+  Tx2: [Account_C, Account_D]     ─┤── 無衝突，可並行
+  Tx3: [Account_E, Account_F]     ─┘
+  Tx4: [Account_A, Account_C]     ──── 與 Tx1, Tx2 衝突，須循序
+
+  Sealevel Runtime 根據存取集合自動排程並行/循序執行
+</code></pre>
+<h3 id="模組化鏈-da--execution--settlement-拆分"><a class="header" href="#模組化鏈-da--execution--settlement-拆分">模組化鏈: DA / Execution / Settlement 拆分</a></h3>
+<p>模組化區塊鏈是近年來最重要的架構趨勢。傳統的單體鏈（Monolithic Chain）在單一系統中同時處理執行（Execution）、共識（Consensus）、資料可用性（Data Availability）和結算（Settlement）。模組化設計將這四個功能拆分到不同的專門化層級，每一層可以獨立優化。</p>
+<p>Ethereum + Rollup 是目前最成熟的模組化架構：Rollup 負責執行（在 L2 上跑交易），Ethereum L1 負責結算和共識，Celestia 或 EigenDA 等專門的 DA 層負責資料可用性。這種分工讓每一層都能專注於自己最擅長的事情，整體性能遠超單體鏈。</p>
+<pre><code class="language-text">模組化區塊鏈架構:
+
+  ┌─────────────────────┐
+  │   執行層 (Execution) │  Rollup (Arbitrum, zkSync, ...)
+  │   處理交易、執行合約  │
+  └──────────┬──────────┘
+             │ 交易批次 + 狀態根
+  ┌──────────▼──────────┐
+  │   結算層 (Settlement)│  Ethereum L1
+  │   驗證 proof / 仲裁  │
+  └──────────┬──────────┘
+             │
+  ┌──────────▼──────────┐
+  │   共識層 (Consensus) │  Ethereum PoS 驗證者
+  │   排序、出塊          │
+  └──────────┬──────────┘
+             │
+  ┌──────────▼──────────┐
+  │   DA 層 (Data Avail.)│  Ethereum blobs / Celestia / EigenDA
+  │   確保資料可取得      │
+  └─────────────────────┘
+</code></pre>
 <h2 id="22-常見生態定位"><a class="header" href="#22-常見生態定位">2.2 常見生態定位</a></h2>
+<p>每條鏈在「安全-性能-成本-生態」的多維空間中佔據不同的位置。選擇哪條鏈，取決於你的業務需求在這些維度上的優先順序。</p>
 <div class="table-wrapper"><table><thead><tr><th>類型</th><th>代表</th><th>優勢</th><th>代價</th></tr></thead><tbody>
 <tr><td>安全優先 L1</td><td>Bitcoin, Ethereum</td><td>安全預算高、生態成熟</td><td>成本與吞吐受限</td></tr>
 <tr><td>高性能 L1</td><td>Solana, Sui, Aptos</td><td>低延遲、低費用</td><td>節點門檻高、中心化壓力</td></tr>
@@ -194,6 +285,18 @@
 <tr><td>AppChain/Subnet</td><td>Cosmos, Avalanche 子網</td><td>客製治理與費率</td><td>生態與流動性切割</td></tr>
 </tbody></table>
 </div>
+<h3 id="安全優先-l1"><a class="header" href="#安全優先-l1">安全優先 L1</a></h3>
+<p>Bitcoin 和 Ethereum 是市值最大、歷史最久、安全預算最高的兩條公鏈。Bitcoin 的安全來自全球規模的 PoW 算力（每日安全支出超過 3,000 萬美元），Ethereum 的安全來自超過 3,000 萬顆 ETH 的質押（價值數百億美元）。這意味著要攻擊這兩條鏈的成本極其高昂，幾乎不可能成功。</p>
+<p>代價是吞吐量和成本。Ethereum 主網的 gas 費在高峰期可以飆升到數十美元一筆交易，Bitcoin 的平均出塊時間是 10 分鐘。對於需要高頻互動的應用（如遊戲、社交），直接在 L1 上運行是不現實的。這就是為什麼 Rollup L2 生態快速崛起的原因。</p>
+<h3 id="高性能-l1"><a class="header" href="#高性能-l1">高性能 L1</a></h3>
+<p>Solana 每秒可處理數千筆交易，平均手續費低於 0.01 美元，出塊時間 400ms。Sui 和 Aptos 使用 Move 語言，在物件級別實現並行執行，對簡單交易可以達到次秒級確認。這些鏈適合需要高頻、低延遲互動的場景，如鏈上訂單簿交易所、即時遊戲等。</p>
+<p>但高性能的代價是中心化壓力。Solana 的全節點需要高端硬體（128GB RAM、多核 CPU、高速 SSD），這使得驗證者數量相對較少。此外，Solana 歷史上曾多次因為高負載導致全網停機（outage），這對需要 24/7 可用性的業務是重大風險。在選擇高性能 L1 時，必須將這些停機風險納入系統設計——例如設計 fallback 到其他鏈的機制。</p>
+<h3 id="rollup-l2"><a class="header" href="#rollup-l2">Rollup L2</a></h3>
+<p>Rollup 是目前最受歡迎的擴容方案。核心思想是在 L2 上執行交易、在 L1 上驗證結果。Optimistic Rollup（如 Arbitrum、Optimism）假設所有交易都是正確的，除非有人在挑戰期內提出欺詐證明。ZK Rollup（如 zkSync、Starknet）用零知識證明數學地證明所有交易的正確性。</p>
+<p>Rollup 的主要風險在於 Sequencer（排序器）的中心化。目前大多數 Rollup 的排序器由項目方獨自運營，如果排序器宕機或審查交易，使用者的資金不會丟失（因為可以通過 L1 強制退出），但使用體驗會受到嚴重影響。Sequencer 去中心化是所有 Rollup 團隊正在努力的方向。</p>
+<h3 id="appchain--subnet"><a class="header" href="#appchain--subnet">AppChain / Subnet</a></h3>
+<p>AppChain 的理念是「每個應用有自己的鏈」。Cosmos 生態中的每條鏈（如 Osmosis、dYdX Chain）都有獨立的驗證者集合和治理機制，通過 IBC（Inter-Blockchain Communication）協議實現跨鏈通訊。Avalanche 子網允許創建自定義的區塊鏈，共享 Avalanche 的驗證者基礎設施。</p>
+<p>AppChain 的優勢是完全客製化——你可以定義自己的 gas 代幣、出塊時間、交易格式和治理規則。代價是流動性碎片化和生態割裂。當每個應用都有自己的鏈時，資產在不同鏈之間流動需要通過跨鏈橋，這增加了複雜性和安全風險。</p>
 <h2 id="23-utxo--eutxo--account-對照"><a class="header" href="#23-utxo--eutxo--account-對照">2.3 UTXO / EUTXO / Account 對照</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>維度</th><th>UTXO</th><th>EUTXO</th><th>Account</th></tr></thead><tbody>
 <tr><td>狀態單位</td><td>未花費輸出</td><td>帶資料與腳本條件的輸出</td><td>全域帳戶狀態</td></tr>
@@ -203,7 +306,37 @@
 <tr><td>常見風險</td><td>UTXO 管理碎片化</td><td>腳本與 datum 設計複雜</td><td>reentrancy / global state 競態</td></tr>
 </tbody></table>
 </div>
+<h3 id="深入理解三種模型的差異"><a class="header" href="#深入理解三種模型的差異">深入理解三種模型的差異</a></h3>
+<p><strong>UTXO 的思維方式是「現金流」。</strong> 你手上有幾張紙鈔（UTXO），要付錢時選擇湊足金額的紙鈔作為輸入，產生新的紙鈔給收款方和自己（找零）。每張紙鈔只能用一次（spent），用完就永遠不能再用。這使得雙重花費（double spending）的檢查非常簡單——只需要確認每個輸入的 UTXO 沒有在其他交易中被使用過。</p>
+<pre><code class="language-text">UTXO 選幣演算法示例:
+
+  目標: 支付 0.7 BTC
+
+  可用 UTXO:
+    UTXO_1: 0.3 BTC
+    UTXO_2: 0.5 BTC  ←── 選擇
+    UTXO_3: 0.1 BTC
+    UTXO_4: 0.4 BTC  ←── 選擇
+
+  輸入: UTXO_2 (0.5) + UTXO_4 (0.4) = 0.9 BTC
+  輸出:
+    - 收款方: 0.7 BTC (新 UTXO)
+    - 找零:   0.1999 BTC (新 UTXO，回到自己)
+    - 手續費: 0.0001 BTC (隱含，不出現在輸出中)
+</code></pre>
+<p><strong>Account 的思維方式是「銀行帳戶」。</strong> 你有一個帳戶，裡面有個餘額數字。轉帳就是從你的帳戶扣錢、往對方帳戶加錢。這很直覺，但隱含了一個全域鎖的問題——同一個帳戶在同一時間只能有一筆交易被處理（由 nonce 保證交易順序）。合約的全域狀態也類似：Uniswap 的流動性池是一個共享狀態，所有 swap 交易必須循序修改它。</p>
+<p><strong>EUTXO 是兩者的折衷嘗試。</strong> 它保留了 UTXO 的並行性優勢，同時透過 Datum 和 Validator Script 獲得了智能合約的表達力。但 EUTXO 的開發模式要求更多的函數式編程思維（Haskell/Plutus），學習曲線相對陡峭。</p>
+<h3 id="各模型的工程影響"><a class="header" href="#各模型的工程影響">各模型的工程影響</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>工程面向</th><th>UTXO</th><th>EUTXO</th><th>Account</th></tr></thead><tbody>
+<tr><td>錢包開發</td><td>需要 UTXO 選幣邏輯、找零管理</td><td>UTXO 管理 + Datum 處理</td><td>相對簡單，查餘額就好</td></tr>
+<tr><td>交易建構</td><td>手動組裝輸入輸出</td><td>組裝 UTXO + Datum + Redeemer</td><td>指定目標地址和金額即可</td></tr>
+<tr><td>餘額查詢</td><td>掃描所有屬於該地址的 UTXO</td><td>掃描 UTXO + 解析 Datum</td><td>直接查詢帳戶狀態</td></tr>
+<tr><td>交易追蹤</td><td>天然可追蹤（UTXO 圖）</td><td>可追蹤但更複雜</td><td>需要事件日誌（Event Log）</td></tr>
+<tr><td>隱私性</td><td>較好（每次可用新地址）</td><td>較好</td><td>較差（帳戶地址固定）</td></tr>
+</tbody></table>
+</div>
 <h2 id="24-常見-utxo-鏈工程實務視角"><a class="header" href="#24-常見-utxo-鏈工程實務視角">2.4 常見 UTXO 鏈（工程實務視角）</a></h2>
+<p>以下列出主要的 UTXO 系列區塊鏈，從工程實務的角度分析它們的特點和適用場景。</p>
 <div class="table-wrapper"><table><thead><tr><th>鏈</th><th>模型</th><th>特點</th><th>常見用途</th></tr></thead><tbody>
 <tr><td>Bitcoin</td><td>UTXO</td><td>安全與去中心化優先</td><td>價值儲存、結算</td></tr>
 <tr><td>Litecoin</td><td>UTXO</td><td>區塊較快、支付友好</td><td>小額支付</td></tr>
@@ -217,39 +350,129 @@
 <tr><td>Kaspa</td><td>UTXO + DAG</td><td>高吞吐 PoW 路線</td><td>高頻轉帳</td></tr>
 </tbody></table>
 </div>
+<h3 id="bitcoin-工程實務"><a class="header" href="#bitcoin-工程實務">Bitcoin 工程實務</a></h3>
+<p>Bitcoin 是 UTXO 模型的原型，也是在工程上最需要注意 UTXO 管理的鏈。在構建 Bitcoin 相關系統時，有幾個常見的工程挑戰：</p>
+<p><strong>UTXO 碎片化管理：</strong> 當一個地址收到大量小額支付（例如交易所的入金地址），會產生大量小額 UTXO。當需要支付大額時，必須合併（consolidate）這些 UTXO，而每個輸入都需要消耗交易空間（因此增加手續費）。最佳實踐是在手續費低的時段（通常是週末或鏈上活動較少時）定期做 UTXO 合併。</p>
+<pre><code class="language-text">UTXO 碎片化示例:
+
+  問題場景: 交易所冷錢包有 10,000 個 UTXO，每個 0.001 BTC
+  總餘額: 10 BTC
+  要提現: 5 BTC
+
+  交易大小 ≈ 10000 inputs × 148 bytes ≈ 1.48 MB
+  (超過 Bitcoin 區塊大小限制 ~4 MB weight!)
+
+  解決方案: 提前在低費率時段做 UTXO 合併
+  - 分批合併 (每次 500 個 UTXO)
+  - 監控 mempool 費率，在 &lt; 10 sat/vByte 時執行
+</code></pre>
+<p><strong>手續費估算：</strong> Bitcoin 的手續費不是按金額計算，而是按交易的資料大小（或更精確地說，weight unit）計算。一筆有 2 個輸入、2 個輸出的 P2WPKH 交易大約是 141 vBytes，如果當前費率是 20 sat/vByte，手續費就是 2,820 satoshis。RBF（Replace-by-Fee）和 CPFP（Child-Pays-for-Parent）是加速交易確認的兩種機制。</p>
+<p><strong>地址類型選擇：</strong> P2TR（Taproot）是目前推薦的地址類型，提供最好的隱私性和最低的手續費。但需要注意與老系統的相容性——有些交易所和錢包可能尚未支援 Taproot 地址的發送。</p>
+<h3 id="隱私鏈工程考量"><a class="header" href="#隱私鏈工程考量">隱私鏈工程考量</a></h3>
+<p>Zcash 和 Monero 是兩條主要的隱私鏈，它們在工程上有特殊的挑戰：</p>
+<p><strong>Zcash</strong> 的 Shielded Pool 使用 zk-SNARK 證明來隱藏交易的發送方、接收方和金額。生成 ZK 證明是計算密集型操作，在手機端可能需要數十秒甚至數分鐘。從合規角度，Zcash 支援 viewing key，允許持有者對監管機構披露交易歷史而不暴露私鑰。</p>
+<p><strong>Monero</strong> 的隱私是強制性的（不是可選的），使用 Ring Signatures（環簽名）隱藏發送方、Stealth Address（隱匿地址）隱藏接收方、RingCT 隱藏金額。這對交易所的合規部門構成挑戰，因為無法通過鏈上分析追蹤資金流向。</p>
 <h2 id="25-三角取捨"><a class="header" href="#25-三角取捨">2.5 三角取捨</a></h2>
 <pre><code class="language-text">             去中心化
                 /\
                /  \
-              /    \
-             /      \
+              / BTC\
+             / ETH  \
             /        \
-   安全性  /__________\  可擴展性
+           /  Rollups  \
+          /    Cosmos    \
+         /      SOL       \
+   安全性  /________________\  可擴展性
+          AppChain   Sui/Aptos
 </code></pre>
+<p>區塊鏈的「不可能三角」（Scalability Trilemma）是 Vitalik Buterin 提出的概念：一條區塊鏈不可能同時在去中心化、安全性和可擴展性三個維度上都做到極致。任何設計都是在這三者之間做取捨。</p>
 <p>工程上不是選一個點，而是做「可接受風險集合」：</p>
 <ul>
 <li>資產託管系統偏安全/去中心化</li>
 <li>交易撮合系統偏可擴展/低延遲</li>
 <li>跨鏈系統偏向可驗證性與失效安全</li>
 </ul>
+<h3 id="實務中的取捨決策"><a class="header" href="#實務中的取捨決策">實務中的取捨決策</a></h3>
+<p><strong>案例 1: DeFi 借貸協議。</strong> Aave 和 Compound 部署在 Ethereum 主網，因為借貸協議管理著數十億美元的資產，安全性是第一優先。即使 gas 費高昂，用戶可以接受，因為相比於借貸金額，幾美元的手續費是微不足道的。後來 Aave 也部署到 Arbitrum、Optimism 等 L2，為小額借貸的用戶提供低成本選項。</p>
+<p><strong>案例 2: 鏈上遊戲。</strong> Axie Infinity 最初在 Ethereum 主網上運行，gas 費讓玩家無法承受。後來遷移到自建的 Ronin 側鏈（AppChain），犧牲了去中心化（只有少數驗證者），換取了低費用和高吞吐。代價是 Ronin Bridge 在 2022 年被攻擊，損失 6.25 億美元——這正是去中心化不足帶來的安全風險。</p>
+<p><strong>案例 3: 穩定幣支付。</strong> Circle 的 USDC 部署在多條鏈上，包括 Ethereum（高安全性大額結算）、Solana（低費用零售支付）、Arbitrum（平衡方案）。不同場景使用不同鏈，是工程上最務實的做法。</p>
 <h2 id="26-選鏈評估矩陣"><a class="header" href="#26-選鏈評估矩陣">2.6 選鏈評估矩陣</a></h2>
+<p>選擇區塊鏈不是一次性的決策，而是需要持續評估的過程。以下是評估框架的各個維度，每個維度都附帶具體的衡量指標。</p>
+<h3 id="安全"><a class="header" href="#安全">安全</a></h3>
 <ul>
-<li>安全: 歷史事故、節點分散、客戶端多樣性</li>
-<li>成本: 平均/尖峰手續費、橋接成本</li>
-<li>可用性: RPC 穩定度、重組機率、最終性時間</li>
-<li>開發: SDK/測試工具/審計供給</li>
-<li>生態: TVL、流動性深度、協議組合性</li>
-<li>合規: 地區政策、交易監控與稽核需求</li>
+<li><strong>歷史事故：</strong> 該鏈是否曾經發生過嚴重的安全事件（共識失敗、停機、資金損失）？</li>
+<li><strong>節點分散度：</strong> 驗證者數量、地理分佈、營運實體的多樣性。Ethereum 有超過 80 萬個驗證者，Solana 約 1,500 個。</li>
+<li><strong>客戶端多樣性：</strong> 是否有多個獨立的客戶端實作？Ethereum 有 Geth、Nethermind、Besu、Erigon 等，降低了單一實作 Bug 導致全網故障的風險。如果只有一個客戶端實作，該客戶端的 Bug 就是全網的 Bug。</li>
+</ul>
+<h3 id="成本"><a class="header" href="#成本">成本</a></h3>
+<ul>
+<li><strong>平均手續費：</strong> 日常操作的平均 gas 費。Ethereum 主網數美元、Arbitrum 數美分、Solana 低於一美分。</li>
+<li><strong>尖峰手續費：</strong> 在 NFT mint、空投搶奪等極端場景下的手續費。Ethereum 主網曾出現單筆交易超過 100 美元 gas 費的情況。</li>
+<li><strong>橋接成本：</strong> 將資產從一條鏈移動到另一條鏈的費用，包括手續費和滑點。</li>
+</ul>
+<h3 id="可用性"><a class="header" href="#可用性">可用性</a></h3>
+<ul>
+<li><strong>RPC 穩定度：</strong> 公共和付費 RPC 端點的可用性和回應時間。</li>
+<li><strong>重組機率：</strong> 區塊重組發生的頻率和深度。Ethereum PoS 後重組極為罕見（每年不到 1 次），Polygon PoS 曾發生較深的重組。</li>
+<li><strong>最終性時間：</strong> 交易從送出到「不可逆」的時間。Ethereum 約 12 分鐘（2 個 epoch）、Solana 約 12 秒、Arbitrum 約 7 天（挑戰期）。</li>
+</ul>
+<h3 id="開發"><a class="header" href="#開發">開發</a></h3>
+<ul>
+<li><strong>SDK 成熟度：</strong> 是否有完善的開發工具包？ethers.js/viem 是 EVM 生態的標準，@solana/web3.js 是 Solana 的對應物。</li>
+<li><strong>測試工具：</strong> Hardhat、Foundry（EVM）、Anchor（Solana）等本地測試框架的成熟度。</li>
+<li><strong>審計供給：</strong> 能找到多少有經驗的安全審計公司？EVM 合約的審計市場最成熟，Move 語言的審計供給較少。</li>
+</ul>
+<h3 id="生態"><a class="header" href="#生態">生態</a></h3>
+<ul>
+<li><strong>TVL（Total Value Locked）：</strong> 鎖定在該鏈上 DeFi 協議中的總資產價值，反映了資本的信任程度。</li>
+<li><strong>流動性深度：</strong> DEX 上的流動性是否足夠支撐大額交易而不產生過大滑點？</li>
+<li><strong>協議組合性（Composability）：</strong> 不同協議之間是否可以無縫組合？這是 Ethereum 生態的最大優勢——你可以在一筆交易中同時呼叫 Uniswap、Aave 和 Curve。</li>
+</ul>
+<h3 id="合規"><a class="header" href="#合規">合規</a></h3>
+<ul>
+<li><strong>地區政策：</strong> 目標市場對加密貨幣的監管態度。某些司法管轄區對隱私幣有限制。</li>
+<li><strong>交易監控：</strong> 是否有成熟的鏈上分析工具（Chainalysis、TRM Labs）支援該鏈？</li>
+<li><strong>稽核需求：</strong> 金融級應用需要可審計的交易記錄。UTXO 模型天然具備較好的可追蹤性。</li>
 </ul>
 <h2 id="27-什麼時候選-utxo"><a class="header" href="#27-什麼時候選-utxo">2.7 什麼時候選 UTXO</a></h2>
+<p>UTXO 模型並不適合所有場景，但在特定的使用情境中，它比 Account 模型有著顯著的優勢。以下是適合選擇 UTXO 鏈的場景分析。</p>
+<h3 id="核心適用場景"><a class="header" href="#核心適用場景">核心適用場景</a></h3>
 <ul>
-<li>以「資產可追蹤、可審計、穩定結算」為核心</li>
-<li>不需要複雜共享狀態合約</li>
-<li>對簽核流程與輸入輸出控制要求高</li>
+<li>
+<p><strong>以「資產可追蹤、可審計、穩定結算」為核心。</strong> UTXO 的圖結構天然提供了完整的資金流向追蹤能力。從任何一筆 UTXO 出發，你可以向前追溯它的來源（一直追到 coinbase 交易），也可以向後追蹤它被花費後的去向。這對合規、反洗錢（AML）和審計需求非常有價值。</p>
+</li>
+<li>
+<p><strong>不需要複雜共享狀態合約。</strong> 如果你的業務邏輯主要是「A 付錢給 B」、「多人共同簽署一筆支付」、「時間鎖定支付」等支付類場景，UTXO 的腳本系統已經足夠。硬要在 UTXO 鏈上實現像 Uniswap 那樣的 AMM DEX，雖然技術上可行（如 Cardano 上的 DEX），但開發複雜度會比 Account 模型高出許多。</p>
+</li>
+<li>
+<p><strong>對簽核流程與輸入輸出控制要求高。</strong> UTXO 模型允許你精確控制每一筆交易的輸入和輸出。在企業資金管理場景中，你可以強制要求「冷錢包的 UTXO 只能被轉到白名單地址」、「每筆 UTXO 的花費都需要 3-of-5 多簽」。這種細粒度的控制在 Account 模型中需要額外的合約邏輯才能實現。</p>
+</li>
 </ul>
-<h2 id="白話說明"><a class="header" href="#白話說明">白話說明</a></h2>
-<p>UTXO 可以把每筆錢想成獨立紙鈔，花錢時要拆紙鈔再找零；
-Account 像銀行帳戶，直接改餘額。兩種都能做系統，但工程思維完全不同。</p>
+<h3 id="不適合-utxo-的場景"><a class="header" href="#不適合-utxo-的場景">不適合 UTXO 的場景</a></h3>
+<ul>
+<li><strong>需要複雜的鏈上商業邏輯：</strong> AMM、借貸、衍生品等 DeFi 協議的核心邏輯依賴全域共享狀態。</li>
+<li><strong>需要快速的開發迭代：</strong> EVM 生態的開發工具和開發者社群遠比 UTXO 鏈成熟。</li>
+<li><strong>需要高度的協議組合性：</strong> DeFi 的「樂高積木」效應在 Account 模型中更容易實現。</li>
+</ul>
+<pre><code class="language-text">選擇決策樹:
+
+  你的核心需求是什麼?
+  │
+  ├── 安全結算 / 資產託管 / 合規審計
+  │   └── 選 UTXO 鏈 (Bitcoin / Litecoin)
+  │
+  ├── 複雜 DeFi / NFT / 遊戲
+  │   └── 選 Account 鏈 (Ethereum / L2 / Solana)
+  │
+  ├── UTXO 資產 + 智能合約
+  │   └── 選 EUTXO 鏈 (Cardano) 或 Cell Model (Nervos CKB)
+  │
+  └── 客製化治理 / 獨立鏈
+      └── 選 AppChain (Cosmos SDK / Avalanche Subnet)
+</code></pre>
+<h2 id="白話總結"><a class="header" href="#白話總結">白話總結</a></h2>
+<p>UTXO 可以把每筆錢想成獨立紙鈔，花錢時要拆紙鈔再找零；Account 像銀行帳戶，直接改餘額。兩種都能做系統，但工程思維完全不同。UTXO 模型強迫你思考「我要花哪幾張紙鈔、找零給誰」，這種思維方式使得每筆交易都是自包含的、可獨立驗證的，非常適合「付款-結算」類的業務場景。Account 模型讓你像操作資料庫一樣操作鏈上狀態，開發起來更直覺，但也帶來了全域狀態共享、重入攻擊等 Account 特有的風險。</p>
+<p>選鏈不是選「最好的鏈」，而是選「最適合你業務的鏈」。如果你在做交易所的結算系統，Bitcoin 的安全性和可審計性是最重要的；如果你在做一個 DeFi 協議，Ethereum 或其 L2 的生態和組合性是關鍵；如果你在做一個高頻交易的鏈上訂單簿，Solana 的低延遲是剛需。很多成熟的業務會同時使用多條鏈——在 Ethereum 上做高價值結算、在 L2 上做日常互動、在 Bitcoin 上做最終的價值儲存。多鏈策略已經從選項變成了標配，但它也帶來了跨鏈資產管理和對帳的複雜性，這是你在做架構決策時必須預先考慮的。</p>
 
                     </main>
 
