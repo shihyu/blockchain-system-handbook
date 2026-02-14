@@ -1,0 +1,2856 @@
+<!DOCTYPE HTML>
+<html lang="zh-TW" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>工程師等級 Web3 系統全圖（完整版）</title>
+        <meta name="robots" content="noindex">
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">工程師等級 Web3 系統全圖（完整版）</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="工程師等級-web3-系統全圖完整版"><a class="header" href="#工程師等級-web3-系統全圖完整版">工程師等級 Web3 系統全圖（完整版）</a></h1>
+<p>這本書把 Web3 當成「可程式化金融 + 分散式系統 + 密碼學安全」的組合工程。</p>
+<h2 id="你會得到什麼"><a class="header" href="#你會得到什麼">你會得到什麼</a></h2>
+<ul>
+<li>從節點到應用層的全鏈路模型</li>
+<li>可落地的架構模板</li>
+<li>多簽與治理的實作級細節</li>
+<li>事故與攻擊面導向的防禦策略</li>
+</ul>
+<h2 id="建議閱讀順序"><a class="header" href="#建議閱讀順序">建議閱讀順序</a></h2>
+<ol>
+<li>先看 <code>1~4</code> 章建立系統心智模型</li>
+<li>再看 <code>5~10</code> 章理解錢包、交易、合約、跨鏈、多簽</li>
+<li>最後用 <code>11~14</code> 章做安全與上線檢查</li>
+</ol>
+<h2 id="全局架構圖"><a class="header" href="#全局架構圖">全局架構圖</a></h2>
+<pre><code class="language-text">使用者/機構
+   |
+   v
+前端/後端/API Gateway
+   |
+   +--&gt; 錢包與簽名系統 (EOA/AA/MPC/Multisig)
+   |
+   +--&gt; 風控與策略引擎 (額度/白名單/時鎖/監控)
+   |
+   v
+RPC/節點層 (自建節點 + 第三方 RPC)
+   |
+   +--&gt; L1 (安全錨)
+   +--&gt; L2 (擴容執行)
+   +--&gt; 跨鏈橋/訊息層
+   |
+   v
+合約層 (Vault / Router / Treasury / Gov)
+   |
+   v
+索引層與資料層 (Indexer / Warehouse / SIEM)
+</code></pre>
+<h2 id="白話說明"><a class="header" href="#白話說明">白話說明</a></h2>
+<p>你可以把整個 Web3 系統想成：</p>
+<ul>
+<li>錢包是你的「簽章器」。</li>
+<li>鏈是「共享資料庫 + 可驗證計算機」。</li>
+<li>合約是「公開可執行程式」。</li>
+<li>多簽與治理是「公司內控流程上鏈」。</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="1-系統全圖與分層"><a class="header" href="#1-系統全圖與分層">1. 系統全圖與分層</a></h1>
+<h2 id="11-分層模型"><a class="header" href="#11-分層模型">1.1 分層模型</a></h2>
+<pre><code class="language-text">┌─────────────────────────────────────────────────────────────────┐
+│ L7 產品層: App / Portal / Mobile / Bot                         │
+├─────────────────────────────────────────────────────────────────┤
+│ L6 服務層: API, AuthN/AuthZ, Risk Engine, Policy Engine        │
+├─────────────────────────────────────────────────────────────────┤
+│ L5 交易層: Tx Builder, Simulation, Bundler, Relayer            │
+├─────────────────────────────────────────────────────────────────┤
+│ L4 簽名層: EOA, Smart Account(AA), MPC, Multisig               │
+├─────────────────────────────────────────────────────────────────┤
+│ L3 鏈互動層: RPC, Node Cluster, Sequencer, Mempool             │
+├─────────────────────────────────────────────────────────────────┤
+│ L2 協議層: L1/L2 VM, Consensus, DA, Bridge, Oracle             │
+├─────────────────────────────────────────────────────────────────┤
+│ L1 密碼學層: Hash, Merkle, Signatures, ZK/Commitment           │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h2 id="12-信任邊界"><a class="header" href="#12-信任邊界">1.2 信任邊界</a></h2>
+<ul>
+<li>邊界 A: 客戶端裝置與錢包私鑰</li>
+<li>邊界 B: 應用後端與簽名服務</li>
+<li>邊界 C: RPC 提供者與鏈上真實狀態</li>
+<li>邊界 D: 跨鏈橋外部驗證集合</li>
+</ul>
+<h2 id="13-關鍵風險對應"><a class="header" href="#13-關鍵風險對應">1.3 關鍵風險對應</a></h2>
+<ul>
+<li>單點私鑰: 使用 MPC 或 Multisig + 硬體隔離</li>
+<li>RPC 欺騙: 多來源 RPC 交叉驗證 + Block Hash Anchoring</li>
+<li>跨鏈訊息偽造: 輕客戶端驗證或經濟安全模型明確化</li>
+<li>治理劫持: Timelock + Guardian + Emergency Pause</li>
+</ul>
+<h2 id="14-系統設計原則"><a class="header" href="#14-系統設計原則">1.4 系統設計原則</a></h2>
+<ul>
+<li>最小信任: 盡量把可信計算搬到鏈上</li>
+<li>可驗證性: 每一筆關鍵狀態轉移都可追溯</li>
+<li>漸進去中心化: 先可用，再逐步移除管理權限</li>
+<li>失效安全: 任何模組失敗時預設保守停機</li>
+</ul>
+<h2 id="白話說明-1"><a class="header" href="#白話說明-1">白話說明</a></h2>
+<p>把 Web3 系統想成金融核心系統：</p>
+<ul>
+<li>鏈是總帳。</li>
+<li>合約是交易規則。</li>
+<li>錢包/多簽是簽核流程。</li>
+<li>監控是稽核與風控中心。</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="2-鏈類型與設計取捨"><a class="header" href="#2-鏈類型與設計取捨">2. 鏈類型與設計取捨</a></h1>
+<h2 id="21-公鏈類型"><a class="header" href="#21-公鏈類型">2.1 公鏈類型</a></h2>
+<ul>
+<li>UTXO 鏈: Bitcoin 類，強調可審計、並行花費檢查與簡潔腳本</li>
+<li>EUTXO 鏈: Cardano 類，把資料與腳本條件擴充到 UTXO</li>
+<li>Account 鏈: Ethereum 類，全球狀態 + 智能合約為中心</li>
+<li>高吞吐並行鏈: Solana/Sui 類，偏向執行效能與低延遲</li>
+<li>模組化鏈: DA / Execution / Settlement 拆分</li>
+</ul>
+<h2 id="22-常見生態定位"><a class="header" href="#22-常見生態定位">2.2 常見生態定位</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>類型</th><th>代表</th><th>優勢</th><th>代價</th></tr></thead><tbody>
+<tr><td>安全優先 L1</td><td>Bitcoin, Ethereum</td><td>安全預算高、生態成熟</td><td>成本與吞吐受限</td></tr>
+<tr><td>高性能 L1</td><td>Solana, Sui, Aptos</td><td>低延遲、低費用</td><td>節點門檻高、中心化壓力</td></tr>
+<tr><td>Rollup L2</td><td>Arbitrum, Optimism, zkSync, Base</td><td>低費用、繼承 L1 安全</td><td>依賴橋與排序器</td></tr>
+<tr><td>AppChain/Subnet</td><td>Cosmos, Avalanche 子網</td><td>客製治理與費率</td><td>生態與流動性切割</td></tr>
+</tbody></table>
+</div>
+<h2 id="23-utxo--eutxo--account-對照"><a class="header" href="#23-utxo--eutxo--account-對照">2.3 UTXO / EUTXO / Account 對照</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>維度</th><th>UTXO</th><th>EUTXO</th><th>Account</th></tr></thead><tbody>
+<tr><td>狀態單位</td><td>未花費輸出</td><td>帶資料與腳本條件的輸出</td><td>全域帳戶狀態</td></tr>
+<tr><td>並行性</td><td>高（不同 UTXO 可並行）</td><td>高（取決於輸入衝突）</td><td>較受 nonce / shared state 影響</td></tr>
+<tr><td>合約表達力</td><td>傳統較弱</td><td>中高（函數式條件）</td><td>高（通用 VM）</td></tr>
+<tr><td>開發心智模型</td><td>Cashflow/輸入輸出</td><td>狀態轉移 + datum/redeemer</td><td>物件/狀態機</td></tr>
+<tr><td>常見風險</td><td>UTXO 管理碎片化</td><td>腳本與 datum 設計複雜</td><td>reentrancy / global state 競態</td></tr>
+</tbody></table>
+</div>
+<h2 id="24-常見-utxo-鏈工程實務視角"><a class="header" href="#24-常見-utxo-鏈工程實務視角">2.4 常見 UTXO 鏈（工程實務視角）</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>鏈</th><th>模型</th><th>特點</th><th>常見用途</th></tr></thead><tbody>
+<tr><td>Bitcoin</td><td>UTXO</td><td>安全與去中心化優先</td><td>價值儲存、結算</td></tr>
+<tr><td>Litecoin</td><td>UTXO</td><td>區塊較快、支付友好</td><td>小額支付</td></tr>
+<tr><td>Dogecoin</td><td>UTXO</td><td>社群與支付導向</td><td>零售/打賞</td></tr>
+<tr><td>Bitcoin Cash</td><td>UTXO</td><td>大區塊路線</td><td>低費支付</td></tr>
+<tr><td>Dash</td><td>UTXO</td><td>Masternode 特性</td><td>支付與治理</td></tr>
+<tr><td>Zcash</td><td>UTXO + Shielded Pool</td><td>隱私交易能力</td><td>隱私支付</td></tr>
+<tr><td>Monero</td><td>UTXO-like (RingCT)</td><td>強匿名性</td><td>隱私導向</td></tr>
+<tr><td>Cardano</td><td>EUTXO</td><td>函數式合約模型</td><td>UTXO + 合約應用</td></tr>
+<tr><td>Nervos CKB</td><td>Cell Model(UTXO 變體)</td><td>可編程 Cell</td><td>基礎資產層/擴展</td></tr>
+<tr><td>Kaspa</td><td>UTXO + DAG</td><td>高吞吐 PoW 路線</td><td>高頻轉帳</td></tr>
+</tbody></table>
+</div>
+<h2 id="25-三角取捨"><a class="header" href="#25-三角取捨">2.5 三角取捨</a></h2>
+<pre><code class="language-text">             去中心化
+                /\
+               /  \
+              /    \
+             /      \
+            /        \
+   安全性  /__________\  可擴展性
+</code></pre>
+<p>工程上不是選一個點，而是做「可接受風險集合」：</p>
+<ul>
+<li>資產託管系統偏安全/去中心化</li>
+<li>交易撮合系統偏可擴展/低延遲</li>
+<li>跨鏈系統偏向可驗證性與失效安全</li>
+</ul>
+<h2 id="26-選鏈評估矩陣"><a class="header" href="#26-選鏈評估矩陣">2.6 選鏈評估矩陣</a></h2>
+<ul>
+<li>安全: 歷史事故、節點分散、客戶端多樣性</li>
+<li>成本: 平均/尖峰手續費、橋接成本</li>
+<li>可用性: RPC 穩定度、重組機率、最終性時間</li>
+<li>開發: SDK/測試工具/審計供給</li>
+<li>生態: TVL、流動性深度、協議組合性</li>
+<li>合規: 地區政策、交易監控與稽核需求</li>
+</ul>
+<h2 id="27-什麼時候選-utxo"><a class="header" href="#27-什麼時候選-utxo">2.7 什麼時候選 UTXO</a></h2>
+<ul>
+<li>以「資產可追蹤、可審計、穩定結算」為核心</li>
+<li>不需要複雜共享狀態合約</li>
+<li>對簽核流程與輸入輸出控制要求高</li>
+</ul>
+<h2 id="白話說明-2"><a class="header" href="#白話說明-2">白話說明</a></h2>
+<p>UTXO 可以把每筆錢想成獨立紙鈔，花錢時要拆紙鈔再找零；
+Account 像銀行帳戶，直接改餘額。兩種都能做系統，但工程思維完全不同。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="3-共識最終性與重組"><a class="header" href="#3-共識最終性與重組">3. 共識、最終性與重組</a></h1>
+<h2 id="31-共識模型"><a class="header" href="#31-共識模型">3.1 共識模型</a></h2>
+<ul>
+<li>Nakamoto PoW: 機率最終性，重組風險隨確認數下降</li>
+<li>PoS + BFT: 經濟懲罰 + 檢查點，最終性更快</li>
+<li>Rollup: L2 本地排序 + L1 結算最終性</li>
+</ul>
+<h2 id="32-最終性層級"><a class="header" href="#32-最終性層級">3.2 最終性層級</a></h2>
+<ul>
+<li>Soft Finality: 通常幾秒到幾分鐘，可能被重組</li>
+<li>Economic Finality: 回滾成本高，實務可視為完成</li>
+<li>Cryptographic Finality: 協議層不可逆（或需懲罰超過閾值）</li>
+</ul>
+<h2 id="33-重組reorg工程處理"><a class="header" href="#33-重組reorg工程處理">3.3 重組（Reorg）工程處理</a></h2>
+<ul>
+<li>事件處理採「可回滾模型」</li>
+<li>入帳分級: <code>pending</code> -&gt; <code>confirmed(k)</code> -&gt; <code>finalized</code></li>
+<li>針對大額交易提高確認數</li>
+</ul>
+<pre><code class="language-text">Block N      Block N+1      Block N+2
+   |             |             |
+   +------A------+------B------+------C-----&gt; 主鏈
+            \
+             +------B'-----C'-----------&gt; 分叉鏈(短暫)
+</code></pre>
+<h2 id="34-檢查點策略"><a class="header" href="#34-檢查點策略">3.4 檢查點策略</a></h2>
+<ul>
+<li>交易策略: 依資產風險配置確認數</li>
+<li>服務策略: API 對外預設 <code>confirmed</code>，財務結算用 <code>finalized</code></li>
+<li>風控策略: 同一地址高頻提現套用延遲機制</li>
+</ul>
+<h2 id="白話說明-3"><a class="header" href="#白話說明-3">白話說明</a></h2>
+<p>「打包進區塊」不代表 100% 定案。工程上要把「可回滾」當預設，而不是例外。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="4-網路資料與節點結構"><a class="header" href="#4-網路資料與節點結構">4. 網路、資料與節點結構</a></h1>
+<h2 id="41-節點角色"><a class="header" href="#41-節點角色">4.1 節點角色</a></h2>
+<ul>
+<li>Full Node: 驗證區塊與狀態</li>
+<li>Archive Node: 保存全歷史狀態</li>
+<li>Validator/Sequencer: 產生或排序區塊</li>
+<li>Light Client: 驗證區塊頭與證明</li>
+</ul>
+<h2 id="42-p2p-與-mempool"><a class="header" href="#42-p2p-與-mempool">4.2 P2P 與 Mempool</a></h2>
+<ul>
+<li>交易先進 mempool，再由出塊者選擇</li>
+<li>費率市場決定打包優先序</li>
+<li>私有交易通道可降低搶跑風險</li>
+</ul>
+<h2 id="43-狀態資料結構"><a class="header" href="#43-狀態資料結構">4.3 狀態資料結構</a></h2>
+<ul>
+<li>Merkle Tree / Patricia Trie / Sparse Merkle</li>
+<li>目標: 可驗證包含性與歷史一致性</li>
+</ul>
+<h2 id="44-企業級節點拓撲"><a class="header" href="#44-企業級節點拓撲">4.4 企業級節點拓撲</a></h2>
+<pre><code class="language-text">                   ┌──────────────┐
+                   │ Load Balancer│
+                   └──────┬───────┘
+                          │
+     ┌────────────────────┼────────────────────┐
+     v                    v                    v
+┌───────────┐       ┌───────────┐       ┌───────────┐
+│ RPC Node A│       │ RPC Node B│       │ RPC Node C│
+└─────┬─────┘       └─────┬─────┘       └─────┬─────┘
+      │                   │                   │
+      v                   v                   v
+ ┌─────────┐         ┌─────────┐         ┌─────────┐
+ │Indexer  │         │Indexer  │         │Indexer  │
+ └────┬────┘         └────┬────┘         └────┬────┘
+      └──────────────┬────┴────┬──────────────┘
+                     v         v
+               ┌────────────────────┐
+               │ Data Lake / SIEM   │
+               └────────────────────┘
+</code></pre>
+<h2 id="45-實務要點"><a class="header" href="#45-實務要點">4.5 實務要點</a></h2>
+<ul>
+<li>不依賴單一 RPC 廠商</li>
+<li>讀寫流量分離</li>
+<li>區塊高度一致性監控</li>
+<li>延遲尖峰與 fork 告警</li>
+</ul>
+<h2 id="白話說明-4"><a class="header" href="#白話說明-4">白話說明</a></h2>
+<p>節點不是「連上就好」，而是你系統可用性的地基。少一層冗餘，事故就會放大。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="5-錢包金鑰與簽名流程"><a class="header" href="#5-錢包金鑰與簽名流程">5. 錢包、金鑰與簽名流程</a></h1>
+<h2 id="51-錢包類型"><a class="header" href="#51-錢包類型">5.1 錢包類型</a></h2>
+<ul>
+<li>EOA: 單私鑰控制，簡單但單點風險高</li>
+<li>Smart Contract Wallet (AA): 規則可程式化</li>
+<li>MPC Wallet: 私鑰分片，不在單點重建</li>
+<li>Hardware Wallet: 實體隔離簽名</li>
+</ul>
+<h2 id="52-金鑰管理層級"><a class="header" href="#52-金鑰管理層級">5.2 金鑰管理層級</a></h2>
+<ul>
+<li>熱錢包: 線上簽名，小額快取</li>
+<li>溫錢包: 半自動簽核，中額調度</li>
+<li>冷錢包: 離線簽名，大額保管</li>
+</ul>
+<h2 id="53-簽名流程"><a class="header" href="#53-簽名流程">5.3 簽名流程</a></h2>
+<pre><code class="language-text">User Intent
+   |
+   v
+Policy Engine --(額度/名單/時間窗)-&gt; Allow?
+   |
+   v
+Tx Builder -&gt; Simulation -&gt; Risk Check
+   |
+   v
+Signer (EOA/MPC/Multisig)
+   |
+   v
+Broadcast -&gt; Mempool -&gt; Block -&gt; Finality
+</code></pre>
+<h2 id="54-常見錯誤"><a class="header" href="#54-常見錯誤">5.4 常見錯誤</a></h2>
+<ul>
+<li>未綁 chain id 導致 replay 風險</li>
+<li>盲簽（blind signing）未驗證 calldata</li>
+<li>權限分離不足，營運帳號可直接簽資金交易</li>
+</ul>
+<h2 id="55-防護實務"><a class="header" href="#55-防護實務">5.5 防護實務</a></h2>
+<ul>
+<li>EIP-712 typed data</li>
+<li>簽名前可視化解碼與模擬</li>
+<li>資金動作必須多簽 + 延遲 + 監控</li>
+</ul>
+<h2 id="白話說明-5"><a class="header" href="#白話說明-5">白話說明</a></h2>
+<p>錢包不是 UI，而是你的「簽章控制系統」。私鑰一旦失守，鏈上資產通常不可逆追回。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="6-交易生命週期與-gas-市場"><a class="header" href="#6-交易生命週期與-gas-市場">6. 交易生命週期與 Gas 市場</a></h1>
+<h2 id="61-生命週期"><a class="header" href="#61-生命週期">6.1 生命週期</a></h2>
+<ol>
+<li>建構交易（nonce/gas/data/value）</li>
+<li>本地或服務端模擬</li>
+<li>簽名</li>
+<li>廣播到 mempool</li>
+<li>打包出塊</li>
+<li>達到確認與最終性</li>
+</ol>
+<h2 id="62-evm-gaseip-1559"><a class="header" href="#62-evm-gaseip-1559">6.2 EVM Gas（EIP-1559）</a></h2>
+<ul>
+<li><code>baseFee</code>: 協議燃燒</li>
+<li><code>priorityFee</code>: 給出塊者小費</li>
+<li><code>maxFee</code>: 使用者可接受上限</li>
+</ul>
+<h2 id="63-交易失敗型態"><a class="header" href="#63-交易失敗型態">6.3 交易失敗型態</a></h2>
+<ul>
+<li>Out of gas</li>
+<li>Revert（require/assert/custom error）</li>
+<li>Nonce too low/high</li>
+<li>Slippage 保護觸發</li>
+</ul>
+<h2 id="64-mev-與排序風險"><a class="header" href="#64-mev-與排序風險">6.4 MEV 與排序風險</a></h2>
+<ul>
+<li>Front-running</li>
+<li>Sandwich attack</li>
+<li>Back-running</li>
+</ul>
+<p>工程手段：</p>
+<ul>
+<li>私有 RPC / Builder 直連</li>
+<li>交易批次化</li>
+<li>價格保護與 deadline</li>
+</ul>
+<h2 id="65-狀態機視角"><a class="header" href="#65-狀態機視角">6.5 狀態機視角</a></h2>
+<pre><code class="language-text">Draft -&gt; Signed -&gt; Pending -&gt; Included -&gt; Confirmed(k) -&gt; Finalized
+                    |             |
+                    |             +-&gt; Reverted
+                    +-&gt; Dropped/Replaced
+</code></pre>
+<h2 id="66-utxo-交易生命週期"><a class="header" href="#66-utxo-交易生命週期">6.6 UTXO 交易生命週期</a></h2>
+<ol>
+<li>coin selection（選哪些 UTXO 當 inputs）</li>
+<li>估算 fee rate（sat/vB 等）</li>
+<li>產生 outputs（收款 + change）</li>
+<li>本地簽名（含 witness）</li>
+<li>廣播與 mempool 排序</li>
+<li>必要時 RBF/CPFP 加速</li>
+<li>入塊後按確認數提升信任等級</li>
+</ol>
+<h2 id="白話說明-6"><a class="header" href="#白話說明-6">白話說明</a></h2>
+<p>交易送出後不是「成功或失敗」兩種，而是一連串狀態轉換。你的系統要完整追蹤每個狀態。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="7-智能合約執行模型"><a class="header" href="#7-智能合約執行模型">7. 智能合約執行模型</a></h1>
+<h2 id="71-合約生命週期"><a class="header" href="#71-合約生命週期">7.1 合約生命週期</a></h2>
+<ul>
+<li>設計: 規格、狀態機、權限模型</li>
+<li>開發: 單元測試、fuzz、invariant</li>
+<li>審計: 靜態/動態/人工</li>
+<li>部署: 分環境、權限最小化</li>
+<li>維運: 升級治理、監控、應急</li>
+</ul>
+<h2 id="72-常見架構"><a class="header" href="#72-常見架構">7.2 常見架構</a></h2>
+<ul>
+<li>Monolith: 單合約簡單快速</li>
+<li>Modular: Router + Vault + Library</li>
+<li>Proxy Upgrade: UUPS/Transparent/Beacon</li>
+</ul>
+<h2 id="73-重要安全議題"><a class="header" href="#73-重要安全議題">7.3 重要安全議題</a></h2>
+<ul>
+<li>Reentrancy</li>
+<li>Access control 錯配</li>
+<li>Delegatecall 汙染</li>
+<li>Storage slot 衝突（升級）</li>
+<li>Oracle 操縱</li>
+</ul>
+<h2 id="74-執行流程圖"><a class="header" href="#74-執行流程圖">7.4 執行流程圖</a></h2>
+<pre><code class="language-text">External Call
+   |
+   v
+Function Selector -&gt; Modifier Check -&gt; Business Logic
+   |                                      |
+   |                                      +-&gt; External Interaction
+   |                                      |
+   +-&gt; State Read/Write &lt;-----------------+
+                |
+                v
+              Event Log
+</code></pre>
+<h2 id="75-最小權限設計"><a class="header" href="#75-最小權限設計">7.5 最小權限設計</a></h2>
+<ul>
+<li><code>owner</code> 不直接掌資金，改由 Treasury Multisig</li>
+<li>管理操作進 Timelock</li>
+<li><code>pause</code> 與 <code>unpause</code> 分離角色</li>
+</ul>
+<h2 id="白話說明-7"><a class="header" href="#白話說明-7">白話說明</a></h2>
+<p>合約一上鏈就很難改，請把它當成「不可熱修」的核心交易引擎。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="8-l1l2跨鏈與橋接"><a class="header" href="#8-l1l2跨鏈與橋接">8. L1/L2/跨鏈與橋接</a></h1>
+<h2 id="81-為什麼需要-l2"><a class="header" href="#81-為什麼需要-l2">8.1 為什麼需要 L2</a></h2>
+<ul>
+<li>降低交易成本</li>
+<li>提高吞吐</li>
+<li>把計算外包到 L2，把安全錨定在 L1</li>
+</ul>
+<h2 id="82-rollup-差異"><a class="header" href="#82-rollup-差異">8.2 Rollup 差異</a></h2>
+<ul>
+<li>Optimistic Rollup: 挑戰期 + fraud proof</li>
+<li>ZK Rollup: validity proof 快速最終性</li>
+</ul>
+<h2 id="83-跨鏈橋模型"><a class="header" href="#83-跨鏈橋模型">8.3 跨鏈橋模型</a></h2>
+<ul>
+<li>Lock &amp; Mint</li>
+<li>Burn &amp; Release</li>
+<li>Light-client bridge</li>
+<li>External validator bridge</li>
+</ul>
+<h2 id="84-跨鏈風險"><a class="header" href="#84-跨鏈風險">8.4 跨鏈風險</a></h2>
+<ul>
+<li>驗證者集中</li>
+<li>訊息重放</li>
+<li>錯誤最終性假設</li>
+<li>升級權限過大</li>
+</ul>
+<h2 id="85-訊息流"><a class="header" href="#85-訊息流">8.5 訊息流</a></h2>
+<pre><code class="language-text">Chain A Contract --emit--&gt; Bridge Relayer --proof--&gt; Chain B Verifier
+       ^                                                    |
+       |                                                    v
+       +------------------- ack / failure ------------------+
+</code></pre>
+<h2 id="86-防禦準則"><a class="header" href="#86-防禦準則">8.6 防禦準則</a></h2>
+<ul>
+<li>大額跨鏈用分批與速率限制</li>
+<li>橋接白名單與路由選擇策略</li>
+<li>目的鏈最終性達標才入帳</li>
+</ul>
+<h2 id="白話說明-8"><a class="header" href="#白話說明-8">白話說明</a></h2>
+<p>跨鏈就是在兩本不同總帳間對帳。驗證機制越弱，資產風險越高。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="9-defi-原語與組合性"><a class="header" href="#9-defi-原語與組合性">9. DeFi 原語與組合性</a></h1>
+<h2 id="91-基本原語"><a class="header" href="#91-基本原語">9.1 基本原語</a></h2>
+<ul>
+<li>AMM: x*y=k、集中流動性</li>
+<li>Lending: 抵押借貸、健康因子、清算</li>
+<li>Derivatives: 永續合約、資金費率</li>
+<li>Stablecoin: 抵押型、演算法型、法幣儲備型</li>
+</ul>
+<h2 id="92-系統風險"><a class="header" href="#92-系統風險">9.2 系統風險</a></h2>
+<ul>
+<li>流動性枯竭</li>
+<li>Oracle 延遲或操縱</li>
+<li>清算擁塞</li>
+<li>參數治理失誤</li>
+</ul>
+<h2 id="93-交易路由層"><a class="header" href="#93-交易路由層">9.3 交易路由層</a></h2>
+<ul>
+<li>Aggregator 比價</li>
+<li>Multi-hop 路徑</li>
+<li>MEV 保護與最小輸出</li>
+</ul>
+<h2 id="94-組合性收益與風險"><a class="header" href="#94-組合性收益與風險">9.4 組合性收益與風險</a></h2>
+<ul>
+<li>收益來自費率與槓桿</li>
+<li>風險來自協議依賴鏈</li>
+</ul>
+<pre><code class="language-text">User -&gt; Vault -&gt; Strategy A (Lending)
+              -&gt; Strategy B (LP Farming)
+              -&gt; Strategy C (Basis Trade)
+</code></pre>
+<h2 id="95-工程建議"><a class="header" href="#95-工程建議">9.5 工程建議</a></h2>
+<ul>
+<li>對外協議設定風險分數</li>
+<li>依分數配置資金上限</li>
+<li>任一依賴異常時觸發策略降檔</li>
+</ul>
+<h2 id="白話說明-9"><a class="header" href="#白話說明-9">白話說明</a></h2>
+<p>DeFi 很像可組合的金融積木。積木越多，收益可能更高，但連鎖故障機率也更高。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="10-多簽金庫與治理結構"><a class="header" href="#10-多簽金庫與治理結構">10. 多簽、金庫與治理結構</a></h1>
+<h2 id="101-多簽核心"><a class="header" href="#101-多簽核心">10.1 多簽核心</a></h2>
+<p>多簽（M-of-N）是把單一簽名權分散成多個獨立持有人，降低單點失陷風險。</p>
+<h2 id="102-典型金庫分層"><a class="header" href="#102-典型金庫分層">10.2 典型金庫分層</a></h2>
+<ul>
+<li>L0 Root Treasury: 冷層，3/5 或 4/7，高延遲、高安全</li>
+<li>L1 Ops Treasury: 日常營運，2/3 或 3/5</li>
+<li>L2 Hot Wallet: 小額快速支付，1/1 + 低額度</li>
+</ul>
+<h2 id="103-權限分離"><a class="header" href="#103-權限分離">10.3 權限分離</a></h2>
+<ul>
+<li>提案者（Proposer）</li>
+<li>審核者（Reviewer）</li>
+<li>執行者（Executor）</li>
+<li>監督者（Auditor/Observer）</li>
+</ul>
+<h2 id="104-推薦控制項"><a class="header" href="#104-推薦控制項">10.4 推薦控制項</a></h2>
+<ul>
+<li>Timelock（例如 12h/24h/48h）</li>
+<li>Spend Limit（每日/每週上限）</li>
+<li>Function Allowlist（僅允許特定 selector）</li>
+<li>目的地址 Allowlist</li>
+<li>緊急暫停（Pause Guardian）</li>
+</ul>
+<h2 id="105-多簽交易流程"><a class="header" href="#105-多簽交易流程">10.5 多簽交易流程</a></h2>
+<pre><code class="language-text">Proposal Created
+   |
+   v
+Policy Check (limit, allowlist, risk score)
+   |
+   v
+Signatures Collected (M of N)
+   |
+   v
+Timelock Queue
+   |
+   v
+Execute On-chain
+   |
+   v
+Post-check + Accounting + Alert
+</code></pre>
+<h2 id="106-治理模型"><a class="header" href="#106-治理模型">10.6 治理模型</a></h2>
+<ul>
+<li>Multisig Governance: 快速、適合早期</li>
+<li>Token Governance: 社群參與高，但易受鯨魚影響</li>
+<li>Hybrid: 日常多簽 + 重大事項投票 + Timelock</li>
+</ul>
+<h2 id="107-事故回應設計"><a class="header" href="#107-事故回應設計">10.7 事故回應設計</a></h2>
+<ul>
+<li>Break-glass Multisig（緊急組）</li>
+<li>Pause 不等於升級，避免濫權</li>
+<li>事故後必須公開 postmortem 與權限調整</li>
+</ul>
+<h2 id="108-多簽常見失敗模式"><a class="header" href="#108-多簽常見失敗模式">10.8 多簽常見失敗模式</a></h2>
+<ul>
+<li>簽名人實際由同一組織控制（名義分散）</li>
+<li>硬體設備集中保管</li>
+<li>簽名流程不看 calldata（盲簽）</li>
+<li>無備援 signer，關鍵人離線導致停擺</li>
+</ul>
+<h2 id="109-企業實務模板"><a class="header" href="#109-企業實務模板">10.9 企業實務模板</a></h2>
+<ul>
+<li>交易分級:
+<ul>
+<li>P0（緊急止血）: 快速路徑 + 事後審計</li>
+<li>P1（大額）: 4/7 + 48h timelock</li>
+<li>P2（日常）: 2/3 + 12h timelock</li>
+</ul>
+</li>
+<li>定期輪替:
+<ul>
+<li>每季輪替 signer 裝置</li>
+<li>每半年演練私鑰失陷與簽名人失聯</li>
+</ul>
+</li>
+</ul>
+<h2 id="白話說明-10"><a class="header" href="#白話說明-10">白話說明</a></h2>
+<p>多簽不是「多幾個人按同意」而已，而是把公司內控流程變成可驗證、可追溯的上鏈簽核系統。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="11-攻擊面事故型態與防禦"><a class="header" href="#11-攻擊面事故型態與防禦">11. 攻擊面、事故型態與防禦</a></h1>
+<h2 id="111-攻擊面總覽"><a class="header" href="#111-攻擊面總覽">11.1 攻擊面總覽</a></h2>
+<ul>
+<li>私鑰與簽名端</li>
+<li>合約程式邏輯</li>
+<li>預言機與外部資料</li>
+<li>前端供應鏈</li>
+<li>RPC/節點基礎設施</li>
+<li>跨鏈橋與治理權限</li>
+</ul>
+<h2 id="112-典型事故分類"><a class="header" href="#112-典型事故分類">11.2 典型事故分類</a></h2>
+<ul>
+<li>Key compromise</li>
+<li>Contract exploit</li>
+<li>Oracle manipulation</li>
+<li>Governance attack</li>
+<li>Bridge validator compromise</li>
+</ul>
+<h2 id="113-防禦分層"><a class="header" href="#113-防禦分層">11.3 防禦分層</a></h2>
+<pre><code class="language-text">Layer 1: Prevent   -&gt; 最小權限、審計、MPC/Multisig
+Layer 2: Detect    -&gt; 監控、異常告警、MEV/價格偏差監測
+Layer 3: Respond   -&gt; Pause、限額、黑白名單、應急流程
+Layer 4: Recover   -&gt; 財務對帳、法務流程、用戶補償策略
+</code></pre>
+<h2 id="114-合約安全測試矩陣"><a class="header" href="#114-合約安全測試矩陣">11.4 合約安全測試矩陣</a></h2>
+<ul>
+<li>Unit test</li>
+<li>Invariant test</li>
+<li>Fuzz test</li>
+<li>Symbolic execution</li>
+<li>Mainnet fork simulation</li>
+</ul>
+<h2 id="115-營運安全"><a class="header" href="#115-營運安全">11.5 營運安全</a></h2>
+<ul>
+<li>簽名設備不連網通用主機</li>
+<li>交易前模擬與結果比對</li>
+<li>變更窗口與雙人覆核</li>
+<li>所有高風險操作強制審批單號</li>
+</ul>
+<h2 id="白話說明-11"><a class="header" href="#白話說明-11">白話說明</a></h2>
+<p>安全不是審一次 code 就結束，而是整個開發到營運流程都要可驗證、可追責。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="12-監控sre-與工程交付"><a class="header" href="#12-監控sre-與工程交付">12. 監控、SRE 與工程交付</a></h1>
+<h2 id="121-可觀測性指標"><a class="header" href="#121-可觀測性指標">12.1 可觀測性指標</a></h2>
+<ul>
+<li>鏈高度差（本地 vs 參考）</li>
+<li>RPC 成功率與延遲分位數</li>
+<li>交易狀態轉換耗時</li>
+<li>失敗率（revert/drop/replaced）</li>
+<li>錢包餘額與授權變化</li>
+</ul>
+<h2 id="122-告警分級"><a class="header" href="#122-告警分級">12.2 告警分級</a></h2>
+<ul>
+<li>P0: 資金異常、私鑰疑似外洩、跨鏈異常大額</li>
+<li>P1: 交易卡 pending、節點脫節、預言機偏差</li>
+<li>P2: 延遲上升、索引落後</li>
+</ul>
+<h2 id="123-發版流程"><a class="header" href="#123-發版流程">12.3 發版流程</a></h2>
+<ol>
+<li>測試網部署與回歸</li>
+<li>Mainnet fork 模擬</li>
+<li>審批與變更窗口</li>
+<li>小流量灰度</li>
+<li>全量啟用</li>
+<li>觀察期與回滾預案</li>
+</ol>
+<h2 id="124-runbook-基本模板"><a class="header" href="#124-runbook-基本模板">12.4 Runbook 基本模板</a></h2>
+<ul>
+<li>觸發條件</li>
+<li>立即止血動作</li>
+<li>升級路徑</li>
+<li>回復步驟</li>
+<li>對外溝通與法遵</li>
+</ul>
+<h2 id="125-事件追蹤資料"><a class="header" href="#125-事件追蹤資料">12.5 事件追蹤資料</a></h2>
+<ul>
+<li>tx hash / block number</li>
+<li>signer id / policy id</li>
+<li>simulation result hash</li>
+<li>before/after balance snapshot</li>
+</ul>
+<h2 id="白話說明-12"><a class="header" href="#白話說明-12">白話說明</a></h2>
+<p>Web3 SRE 的核心不是「伺服器活著」，而是「資產與狀態轉移可控、可追蹤、可回應」。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="13-參考架構藍圖"><a class="header" href="#13-參考架構藍圖">13. 參考架構藍圖</a></h1>
+<h2 id="131-消費級-dapp"><a class="header" href="#131-消費級-dapp">13.1 消費級 DApp</a></h2>
+<pre><code class="language-text">Frontend (Web/Mobile)
+   |
+Backend API --- Cache/DB
+   |
+Tx Service --- Simulation --- Risk Rules
+   |
+Wallet Adapter (EOA/AA)
+   |
+RPC Pool -&gt; L2 (main) + L1 (settlement)
+</code></pre>
+<p>特性:</p>
+<ul>
+<li>成本優先，主要跑 L2</li>
+<li>小額交易可用 account abstraction 改善 UX</li>
+<li>後台做 nonce/gas/重試策略</li>
+</ul>
+<h2 id="132-機構級資產系統"><a class="header" href="#132-機構級資產系統">13.2 機構級資產系統</a></h2>
+<pre><code class="language-text">Client Portal
+   |
+Workflow Engine (approval)
+   |
+Treasury Service ---- Accounting Core
+   |
+MPC/Multisig Cluster ---- HSM
+   |
+Policy Engine (limit/timelock/allowlist)
+   |
+Execution Gateway -&gt; Multi-chain Nodes
+   |
+Monitoring/SIEM + Incident Center
+</code></pre>
+<p>特性:</p>
+<ul>
+<li>安全優先，多簽 + MPC + 冷熱分層</li>
+<li>完整稽核追蹤與法遵資料</li>
+<li>強調災難復原演練</li>
+</ul>
+<h2 id="133-dao-治理架構"><a class="header" href="#133-dao-治理架構">13.3 DAO 治理架構</a></h2>
+<ul>
+<li>Gov Token + Delegate</li>
+<li>Proposal + Timelock + Execution</li>
+<li>Treasury Multisig 作為過渡控制</li>
+<li>漸進去中心化路線圖</li>
+</ul>
+<h2 id="白話說明-13"><a class="header" href="#白話說明-13">白話說明</a></h2>
+<p>小團隊先求可用，機構先求可控，DAO 先求共識。三者的工程重點不同，不可混用。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="14-上線與稽核檢查清單"><a class="header" href="#14-上線與稽核檢查清單">14. 上線與稽核檢查清單</a></h1>
+<h2 id="141-合約上線前"><a class="header" href="#141-合約上線前">14.1 合約上線前</a></h2>
+<ul>
+<li><input disabled="" type="checkbox"/>
+權限矩陣完成並審核</li>
+<li><input disabled="" type="checkbox"/>
+升級路徑與 rollback 設計明確</li>
+<li><input disabled="" type="checkbox"/>
+fuzz/invariant/mainnet-fork 測試通過</li>
+<li><input disabled="" type="checkbox"/>
+重大函數有事件紀錄</li>
+<li><input disabled="" type="checkbox"/>
+Pause 與 emergency 流程演練</li>
+</ul>
+<h2 id="142-錢包與多簽"><a class="header" href="#142-錢包與多簽">14.2 錢包與多簽</a></h2>
+<ul>
+<li><input disabled="" type="checkbox"/>
+signer 身分與設備獨立</li>
+<li><input disabled="" type="checkbox"/>
+簽名前模擬與可視化解碼</li>
+<li><input disabled="" type="checkbox"/>
+高風險交易有 timelock</li>
+<li><input disabled="" type="checkbox"/>
+地址白名單與限額已啟用</li>
+<li><input disabled="" type="checkbox"/>
+signer 輪替與遺失應對已演練</li>
+</ul>
+<h2 id="143-跨鏈與橋接"><a class="header" href="#143-跨鏈與橋接">14.3 跨鏈與橋接</a></h2>
+<ul>
+<li><input disabled="" type="checkbox"/>
+最終性門檻按鏈別設置</li>
+<li><input disabled="" type="checkbox"/>
+單筆/單日跨鏈限額</li>
+<li><input disabled="" type="checkbox"/>
+bridge 依賴風險評級</li>
+<li><input disabled="" type="checkbox"/>
+異常事件可自動降級或停用</li>
+</ul>
+<h2 id="144-監控與營運"><a class="header" href="#144-監控與營運">14.4 監控與營運</a></h2>
+<ul>
+<li><input disabled="" type="checkbox"/>
+交易狀態全鏈路追蹤</li>
+<li><input disabled="" type="checkbox"/>
+P0/P1/P2 告警規則生效</li>
+<li><input disabled="" type="checkbox"/>
+SIEM 留存完整審計資料</li>
+<li><input disabled="" type="checkbox"/>
+Runbook 與 on-call 排班落地</li>
+</ul>
+<h2 id="145-法遵與治理"><a class="header" href="#145-法遵與治理">14.5 法遵與治理</a></h2>
+<ul>
+<li><input disabled="" type="checkbox"/>
+管理權限公開披露</li>
+<li><input disabled="" type="checkbox"/>
+重大變更公告期與投票期</li>
+<li><input disabled="" type="checkbox"/>
+災難處置與補償政策明確</li>
+</ul>
+<h2 id="白話說明-14"><a class="header" href="#白話說明-14">白話說明</a></h2>
+<p>上線前 checklist 不是形式。每一個核對項都對應一種真實事故。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="15-術語與快速索引"><a class="header" href="#15-術語與快速索引">15. 術語與快速索引</a></h1>
+<h2 id="核心術語"><a class="header" href="#核心術語">核心術語</a></h2>
+<ul>
+<li>EOA: Externally Owned Account，外部私鑰帳戶</li>
+<li>UTXO: Unspent Transaction Output，未花費輸出模型</li>
+<li>EUTXO: Extended UTXO，帶資料與腳本條件的 UTXO 擴展</li>
+<li>AA: Account Abstraction，可程式化帳戶</li>
+<li>MPC: Multi-Party Computation，多方計算簽名</li>
+<li>Multisig: M-of-N 門檻多簽</li>
+<li>MEV: Maximal Extractable Value，可提取價值</li>
+<li>Reorg: 區塊重組</li>
+<li>Finality: 最終性</li>
+<li>Sequencer: L2 排序器</li>
+<li>DA: Data Availability，資料可用性</li>
+<li>TVL: Total Value Locked</li>
+</ul>
+<h2 id="快速定位"><a class="header" href="#快速定位">快速定位</a></h2>
+<ul>
+<li>想看交易流程: 第 6 章</li>
+<li>想看合約執行: 第 7 章</li>
+<li>想看跨鏈風險: 第 8 章</li>
+<li>想看多簽完整設計: 第 10 章</li>
+<li>想看安全與事故: 第 11 章</li>
+<li>想上線前總檢查: 第 14 章</li>
+</ul>
+<h2 id="白話說明-15"><a class="header" href="#白話說明-15">白話說明</a></h2>
+<p>這一章可以當字典。遇到陌生詞先回來查，再回主章節看完整上下文。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="16-utxo--eutxo-全面深潛"><a class="header" href="#16-utxo--eutxo-全面深潛">16. UTXO / EUTXO 全面深潛</a></h1>
+<h2 id="161-utxo-是什麼"><a class="header" href="#161-utxo-是什麼">16.1 UTXO 是什麼</a></h2>
+<p>UTXO（Unspent Transaction Output）是「尚未被花費的輸出」。
+交易不是改餘額，而是「消耗舊輸出 + 產生新輸出」。</p>
+<h2 id="162-utxo-交易結構"><a class="header" href="#162-utxo-交易結構">16.2 UTXO 交易結構</a></h2>
+<pre><code class="language-text">Inputs (引用舊 UTXO) + Unlock Script/Witness
+            |
+            v
+Validation (簽名、腳本條件、金額守恆)
+            |
+            v
+Outputs (新 UTXO 集合)
+   - recipient output
+   - change output
+   - fee = inputs - outputs
+</code></pre>
+<h2 id="163-常見-utxo-鏈全表"><a class="header" href="#163-常見-utxo-鏈全表">16.3 常見 UTXO 鏈全表</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>類別</th><th>鏈</th><th>共識/模型</th><th>重點</th></tr></thead><tbody>
+<tr><td>PoW UTXO 主流</td><td>Bitcoin</td><td>PoW + UTXO</td><td>安全錨、最成熟</td></tr>
+<tr><td>PoW UTXO 支付</td><td>Litecoin, Dogecoin, BCH, Dash</td><td>PoW + UTXO</td><td>支付導向、費用較低</td></tr>
+<tr><td>隱私 UTXO</td><td>Zcash, Monero</td><td>PoW + Shielded/RingCT</td><td>隱私強、合規成本高</td></tr>
+<tr><td>擴展 UTXO</td><td>Cardano(EUTXO), CKB(Cell)</td><td>PoS/PoW + UTXO 變體</td><td>合約能力提升</td></tr>
+<tr><td>高吞吐 UTXO 路線</td><td>Kaspa</td><td>PoW + DAG/UTXO</td><td>追求低延遲高吞吐</td></tr>
+</tbody></table>
+</div>
+<h2 id="164-eutxoextended-utxo"><a class="header" href="#164-eutxoextended-utxo">16.4 EUTXO（Extended UTXO）</a></h2>
+<p>EUTXO 在每個輸出上加入：</p>
+<ul>
+<li>Datum（資料）</li>
+<li>Redeemer（花費參數）</li>
+<li>Validator Script（驗證邏輯）</li>
+</ul>
+<p>這讓 UTXO 可承載更複雜狀態機，但開發難度會提高。</p>
+<h2 id="165-utxo-vs-account-的工程差異"><a class="header" href="#165-utxo-vs-account-的工程差異">16.5 UTXO vs Account 的工程差異</a></h2>
+<h3 id="狀態建模"><a class="header" href="#狀態建模">狀態建模</a></h3>
+<ul>
+<li>UTXO: 顯式輸入輸出，天然「來源 -&gt; 去向」可追蹤</li>
+<li>Account: 隱式狀態更新，合約邏輯彈性大</li>
+</ul>
+<h3 id="並行度"><a class="header" href="#並行度">並行度</a></h3>
+<ul>
+<li>UTXO: 不同 UTXO 可平行驗證</li>
+<li>Account: 同帳戶 nonce 序列化，容易排隊</li>
+</ul>
+<h3 id="費用估算"><a class="header" href="#費用估算">費用估算</a></h3>
+<ul>
+<li>UTXO: 受輸入輸出數量與見證大小影響</li>
+<li>Account: 受 opcode 執行與 storage 變更影響</li>
+</ul>
+<h3 id="開發心智"><a class="header" href="#開發心智">開發心智</a></h3>
+<ul>
+<li>UTXO: TX graph 思維（像資料流）</li>
+<li>Account: 合約狀態機思維（像物件模型）</li>
+</ul>
+<h2 id="166-utxo-常見工程問題"><a class="header" href="#166-utxo-常見工程問題">16.6 UTXO 常見工程問題</a></h2>
+<ul>
+<li>Dust UTXO: 太小輸出造成管理成本高</li>
+<li>UTXO Fragmentation: 輸出過碎，手續費升高</li>
+<li>Coin Selection: 怎麼選輸入最省費用</li>
+<li>Change Management: 找零地址管理錯誤造成追蹤困難</li>
+<li>Fee Bumping: 交易卡住時要 RBF/CPFP</li>
+</ul>
+<h2 id="167-coin-selection-策略"><a class="header" href="#167-coin-selection-策略">16.7 Coin Selection 策略</a></h2>
+<ul>
+<li>Largest First: 省輸入數，可能找零過大</li>
+<li>Branch and Bound: 嘗試精準匹配</li>
+<li>Knapsack: 近似最佳化</li>
+<li>Privacy-aware: 避免地址關聯洩漏</li>
+</ul>
+<h2 id="168-交易加速策略"><a class="header" href="#168-交易加速策略">16.8 交易加速策略</a></h2>
+<ul>
+<li>RBF（Replace-By-Fee）: 同 nonce/輸入替換更高手續費</li>
+<li>CPFP（Child-Pays-For-Parent）: 子交易抬高父交易打包誘因</li>
+</ul>
+<h2 id="169-utxo-金流稽核"><a class="header" href="#169-utxo-金流稽核">16.9 UTXO 金流稽核</a></h2>
+<ul>
+<li>每一筆輸入可回溯來源 UTXO</li>
+<li>可建立 UTXO age / provenance 風險模型</li>
+<li>建議建立地址分群與風險標記（內部可見）</li>
+</ul>
+<h2 id="1610-utxo-多簽"><a class="header" href="#1610-utxo-多簽">16.10 UTXO 多簽</a></h2>
+<p>常見腳本路線：</p>
+<ul>
+<li>Bitcoin Script 多簽（historical）</li>
+<li>P2WSH / Taproot policy（現代實務）</li>
+<li>Threshold 方案（例如 MuSig2 類聚合簽名）</li>
+</ul>
+<p>重點控制項：</p>
+<ul>
+<li>門檻策略 M-of-N</li>
+<li>輸出模板白名單</li>
+<li>時鎖（絕對/相對）</li>
+<li>緊急恢復路徑（social recovery）</li>
+</ul>
+<h2 id="1611-utxo-安全檢查清單"><a class="header" href="#1611-utxo-安全檢查清單">16.11 UTXO 安全檢查清單</a></h2>
+<ul>
+<li><input disabled="" type="checkbox"/>
+地址與腳本型別檢查（P2PKH/P2WPKH/P2TR 等）</li>
+<li><input disabled="" type="checkbox"/>
+Coin selection 策略與隱私策略分離</li>
+<li><input disabled="" type="checkbox"/>
+交易模擬與費率估算多來源比對</li>
+<li><input disabled="" type="checkbox"/>
+Change output 不落到錯誤地址池</li>
+<li><input disabled="" type="checkbox"/>
+大額轉帳使用多簽 + 時鎖</li>
+<li><input disabled="" type="checkbox"/>
+卡交易有 RBF/CPFP runbook</li>
+</ul>
+<h2 id="1612-什麼場景適合-utxo"><a class="header" href="#1612-什麼場景適合-utxo">16.12 什麼場景適合 UTXO</a></h2>
+<ul>
+<li>高審計要求的資產結算</li>
+<li>需簡潔可驗證的支付引擎</li>
+<li>不追求複雜共享合約狀態</li>
+</ul>
+<h2 id="白話說明-16"><a class="header" href="#白話說明-16">白話說明</a></h2>
+<p>UTXO 就像你皮夾裡一堆紙鈔：</p>
+<ul>
+<li>付款時挑幾張出來</li>
+<li>找零會再回你新紙鈔</li>
+<li>每張紙鈔都有來源與流向
+所以很適合做「可追蹤」的資產系統。</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="第2篇-區塊鏈技術篇"><a class="header" href="#第2篇-區塊鏈技術篇">第2篇 區塊鏈技術篇</a></h1>
+<p>本篇涵蓋第4章到第6章，重點是把區塊鏈當成分散式系統來理解。</p>
+<h2 id="重要度分級"><a class="header" href="#重要度分級">重要度分級</a></h2>
+<ul>
+<li><code>P0</code> 必修：直接影響架構、開發與安全</li>
+<li><code>P1</code> 重要：影響方案選型與產品方向</li>
+<li><code>P2</code> 補充：特定場景或產業知識</li>
+</ul>
+<h2 id="篇章定位"><a class="header" href="#篇章定位">篇章定位</a></h2>
+<ul>
+<li>第4章：底層基礎（P2P、資料結構、PoW、UTXO、安全）</li>
+<li>第5章：核心原理（以太坊、共識、跨鏈、ZK、L2）</li>
+<li>第6章：產業落地（公鏈/聯盟鏈、合規、熱門應用）</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="第4章-初識區塊鏈"><a class="header" href="#第4章-初識區塊鏈">第4章 初識區塊鏈</a></h1>
+<p>本章聚焦於區塊鏈最底層共識與資料結構，目標是建立可實作的工程理解。</p>
+<h2 id="41-區塊鏈的誕生與發展-p1"><a class="header" href="#41-區塊鏈的誕生與發展-p1">4.1 區塊鏈的誕生與發展 <code>P1</code></a></h2>
+<h3 id="411-區塊鏈的誕生-p1"><a class="header" href="#411-區塊鏈的誕生-p1">4.1.1 區塊鏈的誕生 <code>P1</code></a></h3>
+<p>區塊鏈誕生的核心背景是：</p>
+<ul>
+<li>中心化系統容易形成單點故障與信任成本</li>
+<li>網路原生資產需要「不靠中心機構」的記帳方式</li>
+<li>雙花問題需要在開放網路中可被驗證地解決</li>
+</ul>
+<p>工程結論：區塊鏈不是單一技術，而是密碼學、分散式網路、經濟激勵三者結合。</p>
+<h3 id="412-認識密碼龐克組織-p1"><a class="header" href="#412-認識密碼龐克組織-p1">4.1.2 認識密碼龐克組織 <code>P1</code></a></h3>
+<p>密碼龐克（Cypherpunk）核心理念：</p>
+<ul>
+<li>以密碼學工具保護個體自由</li>
+<li>系統要「最小信任」而非「善意假設」</li>
+<li>協議透明、程式可驗證</li>
+</ul>
+<p>對工程的直接影響：</p>
+<ul>
+<li>預設 hostile environment</li>
+<li>重要規則寫進協議而非寫在文件</li>
+<li>採用可公開審計的安全模型</li>
+</ul>
+<h3 id="413-區塊鏈技術的高速發展-p1"><a class="header" href="#413-區塊鏈技術的高速發展-p1">4.1.3 區塊鏈技術的高速發展 <code>P1</code></a></h3>
+<p>發展主軸：</p>
+<ul>
+<li>Bitcoin：價值轉移與 PoW 安全</li>
+<li>Ethereum：可程式化狀態與合約平台</li>
+<li>L2：擴容與低成本</li>
+<li>ZK/模組化：可驗證計算與分層架構</li>
+</ul>
+<h2 id="42-p2p網絡-p0"><a class="header" href="#42-p2p網絡-p0">4.2 P2P網絡 <code>P0</code></a></h2>
+<h3 id="421-p2p網絡概述-p0"><a class="header" href="#421-p2p網絡概述-p0">4.2.1 P2P網絡概述 <code>P0</code></a></h3>
+<p>P2P 網路特徵：</p>
+<ul>
+<li>無中心主機，節點對等交換資料</li>
+<li>新交易/新區塊透過 gossip 擴散</li>
+<li>每節點只需連少量鄰居即可參與全網同步</li>
+</ul>
+<pre><code class="language-text">peer A &lt;-&gt; peer B &lt;-&gt; peer C
+   |         |         |
+peer D &lt;-&gt; peer E &lt;-&gt; peer F
+</code></pre>
+<h3 id="422-p2p網絡的搭建重點-p0"><a class="header" href="#422-p2p網絡的搭建重點-p0">4.2.2 P2P網絡的搭建重點 <code>P0</code></a></h3>
+<p>搭建重點：</p>
+<ul>
+<li>節點發現：seed/bootnode/mDNS</li>
+<li>連線治理：限速、黑名單、重試退避</li>
+<li>訊息設計：消息類型、版本協商、校驗碼</li>
+<li>韌性策略：避免 eclipse attack、避免單點 seed</li>
+</ul>
+<h3 id="423-區塊鏈網絡的資料同步機制-p0"><a class="header" href="#423-區塊鏈網絡的資料同步機制-p0">4.2.3 區塊鏈網絡的資料同步機制 <code>P0</code></a></h3>
+<p>資料同步常見流程：</p>
+<ol>
+<li>節點互報高度與 tip hash</li>
+<li>缺塊節點請求區塊清單</li>
+<li>逐塊拉取並驗證</li>
+<li>更新本地鏈狀態與交易池</li>
+</ol>
+<p>工程要點：</p>
+<ul>
+<li>交易池去重</li>
+<li>區塊驗證先於入庫</li>
+<li>fork 時保留分叉資料以便重組</li>
+</ul>
+<h2 id="43-區塊鏈的資料結構-p0"><a class="header" href="#43-區塊鏈的資料結構-p0">4.3 區塊鏈的資料結構 <code>P0</code></a></h2>
+<h3 id="431-哈希函數-p0"><a class="header" href="#431-哈希函數-p0">4.3.1 哈希函數 <code>P0</code></a></h3>
+<p>hash 函數在鏈中用途：</p>
+<ul>
+<li>交易 ID</li>
+<li>區塊 ID</li>
+<li>Merkle 根</li>
+<li>狀態承諾</li>
+</ul>
+<p>工程原則：</p>
+<ul>
+<li>序列化必須穩定</li>
+<li>hash 算法版本變更要有兼容策略</li>
+</ul>
+<h3 id="432-時序的鏈塊式結構-p0"><a class="header" href="#432-時序的鏈塊式結構-p0">4.3.2 時序的鏈塊式結構 <code>P0</code></a></h3>
+<p>區塊透過 <code>prev_block_hash</code> 串連，形成時間順序。
+任一歷史區塊被改動，都會破壞後續鏈接校驗。</p>
+<pre><code class="language-text">genesis -&gt; block1 -&gt; block2 -&gt; block3 -&gt; tip
+</code></pre>
+<h3 id="433-梅克爾樹-p0"><a class="header" href="#433-梅克爾樹-p0">4.3.3 梅克爾樹 <code>P0</code></a></h3>
+<p>Merkle Tree 解決兩件事：</p>
+<ul>
+<li>大量交易的摘要承諾</li>
+<li>只用路徑證明即可驗證交易包含性</li>
+</ul>
+<p>常見坑：</p>
+<ul>
+<li>奇數葉節點複製規則未統一</li>
+<li>葉節點 hash 前處理不一致</li>
+</ul>
+<h2 id="44-pow機制-p0"><a class="header" href="#44-pow機制-p0">4.4 PoW機制 <code>P0</code></a></h2>
+<h3 id="441-分佈式網絡中共識的意義-p0"><a class="header" href="#441-分佈式網絡中共識的意義-p0">4.4.1 分佈式網絡中共識的意義 <code>P0</code></a></h3>
+<p>共識要回答：</p>
+<ul>
+<li>哪筆交易先發生</li>
+<li>哪個區塊是有效延伸</li>
+<li>網路分割後如何收斂到單一歷史</li>
+</ul>
+<h3 id="442-什麼是pow-p0"><a class="header" href="#442-什麼是pow-p0">4.4.2 什麼是PoW <code>P0</code></a></h3>
+<p>PoW：透過計算成本取得出塊權。
+有效區塊條件：<code>hash(header) &lt; target</code>。</p>
+<h3 id="443-pow的本質原理-p0"><a class="header" href="#443-pow的本質原理-p0">4.4.3 PoW的本質原理 <code>P0</code></a></h3>
+<p>本質是「用客觀成本限制作惡」：</p>
+<ul>
+<li>想改歷史要重做工作量</li>
+<li>攻擊成本與鏈安全預算相關</li>
+</ul>
+<p>工程觀點：</p>
+<ul>
+<li>PoW 提供機率最終性</li>
+<li>大額交易要提高確認數</li>
+</ul>
+<h2 id="45-utxo與交易-p0"><a class="header" href="#45-utxo與交易-p0">4.5 UTXO與交易 <code>P0</code></a></h2>
+<h3 id="451-什麼是utxo-p0"><a class="header" href="#451-什麼是utxo-p0">4.5.1 什麼是UTXO <code>P0</code></a></h3>
+<p>UTXO 是尚未花費輸出。
+交易透過消耗舊輸出、創建新輸出完成轉移。</p>
+<h3 id="452-比特幣交易模型-p0"><a class="header" href="#452-比特幣交易模型-p0">4.5.2 比特幣交易模型 <code>P0</code></a></h3>
+<p>基本結構：</p>
+<ul>
+<li>Inputs：引用前序輸出</li>
+<li>Outputs：新輸出（收款 + 找零）</li>
+<li>Fee：輸入總額減輸出總額</li>
+</ul>
+<pre><code class="language-text">old outputs -&gt; tx inputs -&gt; validation -&gt; tx outputs
+</code></pre>
+<h3 id="453-交易腳本-p0"><a class="header" href="#453-交易腳本-p0">4.5.3 交易腳本 <code>P0</code></a></h3>
+<p>腳本負責定義「誰能花這筆錢」：</p>
+<ul>
+<li>locking script（鎖定條件）</li>
+<li>unlocking witness/script（解鎖證明）</li>
+</ul>
+<p>工程重點：</p>
+<ul>
+<li>支援常見模板（P2PKH/P2WPKH/P2TR）</li>
+<li>驗證失敗要可追蹤錯誤原因</li>
+</ul>
+<h2 id="46-區塊鏈帳本的安全與挑戰-p0"><a class="header" href="#46-區塊鏈帳本的安全與挑戰-p0">4.6 區塊鏈帳本的安全與挑戰 <code>P0</code></a></h2>
+<h3 id="461-雙花攻擊-p0"><a class="header" href="#461-雙花攻擊-p0">4.6.1 雙花攻擊 <code>P0</code></a></h3>
+<p>同一資產被提交兩筆互斥交易。
+防護：</p>
+<ul>
+<li>UTXO/nonce 檢查</li>
+<li>足夠確認數</li>
+<li>高風險交易延遲出貨</li>
+</ul>
+<h3 id="462-51攻擊-p0"><a class="header" href="#462-51攻擊-p0">4.6.2 51%攻擊 <code>P0</code></a></h3>
+<p>若攻擊者控制多數算力/權益，可提高重組與審查能力。
+防護：</p>
+<ul>
+<li>提升經濟安全（算力/質押分散）</li>
+<li>增加確認數策略</li>
+<li>監控異常重組</li>
+</ul>
+<h3 id="463-激勵相容-p0"><a class="header" href="#463-激勵相容-p0">4.6.3 激勵相容 <code>P0</code></a></h3>
+<p>協議應讓誠實行為獲得最大期望收益。</p>
+<p>工程檢核：</p>
+<ul>
+<li>出塊獎勵與費率模型是否合理</li>
+<li>作惡成本是否高於收益</li>
+<li>懲罰機制是否可執行</li>
+</ul>
+<h2 id="本章總結"><a class="header" href="#本章總結">本章總結</a></h2>
+<p>本章最重要的是三條線：</p>
+<ul>
+<li>結構線：hash + 鏈塊 + Merkle</li>
+<li>網路線：P2P 傳播與同步</li>
+<li>共識線：PoW + 激勵 + 安全邊界</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="第5章-區塊鏈的技術原理"><a class="header" href="#第5章-區塊鏈的技術原理">第5章 區塊鏈的技術原理</a></h1>
+<p>本章重點是從 Ethereum 視角理解現代區塊鏈系統，並掌握主流共識與技術演進方向。</p>
+<h2 id="51-以太坊詳解-p0"><a class="header" href="#51-以太坊詳解-p0">5.1 以太坊詳解 <code>P0</code></a></h2>
+<h3 id="511-以太坊概述-p0"><a class="header" href="#511-以太坊概述-p0">5.1.1 以太坊概述 <code>P0</code></a></h3>
+<p>以太坊是通用智能合約平台，核心能力：</p>
+<ul>
+<li>EVM 執行環境</li>
+<li>帳戶模型（EOA/Contract）</li>
+<li>Gas 計費機制</li>
+<li>開放標準（ERC）</li>
+</ul>
+<p>工程定位：適合快速組合 DeFi/NFT/治理應用。</p>
+<h3 id="512-智能合約-p0"><a class="header" href="#512-智能合約-p0">5.1.2 智能合約 <code>P0</code></a></h3>
+<p>智能合約是鏈上狀態機：</p>
+<ul>
+<li>狀態（storage）</li>
+<li>轉移函數（function）</li>
+<li>外部觀測（event）</li>
+</ul>
+<p>風險面：</p>
+<ul>
+<li>不可逆部署</li>
+<li>外部調用風險</li>
+<li>升級與權限治理</li>
+</ul>
+<h3 id="513-外部帳戶與合約帳戶-p0"><a class="header" href="#513-外部帳戶與合約帳戶-p0">5.1.3 外部帳戶與合約帳戶 <code>P0</code></a></h3>
+<ul>
+<li>EOA：私鑰控制，主動發起交易</li>
+<li>Contract Account：程式碼控制，被交易或合約調用觸發</li>
+</ul>
+<p>工程差異：</p>
+<ul>
+<li>EOA 有 nonce</li>
+<li>合約無私鑰，只能按程式規則執行</li>
+</ul>
+<h3 id="514-世界狀態樹-p0"><a class="header" href="#514-世界狀態樹-p0">5.1.4 世界狀態樹 <code>P0</code></a></h3>
+<p>以太坊主要樹結構：</p>
+<ul>
+<li>State Trie：帳戶狀態</li>
+<li>Transactions Trie：區塊交易</li>
+<li>Receipts Trie：交易結果</li>
+</ul>
+<p>作用：</p>
+<ul>
+<li>狀態可驗證</li>
+<li>區塊摘要可快速校驗</li>
+</ul>
+<h3 id="515-以太坊經濟體-p0"><a class="header" href="#515-以太坊經濟體-p0">5.1.5 以太坊經濟體 <code>P0</code></a></h3>
+<p>經濟結構關鍵：</p>
+<ul>
+<li>EIP-1559：base fee + priority fee</li>
+<li>PoS 質押與懲罰</li>
+<li>MEV 對排序與收益分配的影響</li>
+</ul>
+<p>工程要點：</p>
+<ul>
+<li>交易策略需適配動態費率</li>
+<li>高價值交易需防 MEV 與重排</li>
+</ul>
+<h2 id="52-區塊鏈的共識演算法-p0"><a class="header" href="#52-區塊鏈的共識演算法-p0">5.2 區塊鏈的共識演算法 <code>P0</code></a></h2>
+<h3 id="521-pos原理-p0"><a class="header" href="#521-pos原理-p0">5.2.1 PoS原理 <code>P0</code></a></h3>
+<p>PoS 由質押權益決定提議/驗證權：</p>
+<ul>
+<li>誠實參與獲得收益</li>
+<li>惡意行為可被 slash</li>
+</ul>
+<p>優點：低能源消耗、最終性更快。</p>
+<h3 id="522-dpos原理-p1"><a class="header" href="#522-dpos原理-p1">5.2.2 DPoS原理 <code>P1</code></a></h3>
+<p>DPoS 透過持幣人投票選出代表節點。</p>
+<p>優點：性能與治理效率高。
+代價：權力更集中，治理博弈更明顯。</p>
+<h3 id="523-pbft原理-p1"><a class="header" href="#523-pbft原理-p1">5.2.3 PBFT原理 <code>P1</code></a></h3>
+<p>PBFT 適合節點數較少、身份可管理場景（常見於聯盟鏈）。</p>
+<p>特點：</p>
+<ul>
+<li>快速確定性最終性</li>
+<li>通訊複雜度較高</li>
+</ul>
+<h2 id="53-區塊鏈的技術方向"><a class="header" href="#53-區塊鏈的技術方向">5.3 區塊鏈的技術方向</a></h2>
+<h3 id="531-跨鏈-p0"><a class="header" href="#531-跨鏈-p0">5.3.1 跨鏈 <code>P0</code></a></h3>
+<p>跨鏈核心是「在鏈 A 驗證鏈 B 的事件」：</p>
+<ul>
+<li>鎖鑄（lock-mint）</li>
+<li>燒釋（burn-release）</li>
+<li>訊息橋（message bridge）</li>
+</ul>
+<p>安全重點：</p>
+<ul>
+<li>驗證者模型</li>
+<li>最終性假設</li>
+<li>重放與重組處理</li>
+</ul>
+<h3 id="532-同態加密-p1"><a class="header" href="#532-同態加密-p1">5.3.2 同態加密 <code>P1</code></a></h3>
+<p>同態加密允許在密文上計算，潛力在隱私計算與機構協作。</p>
+<p>限制：</p>
+<ul>
+<li>計算與延遲成本高</li>
+<li>通用場景尚需工程折衷</li>
+</ul>
+<h3 id="533-零知識證明-p0"><a class="header" href="#533-零知識證明-p0">5.3.3 零知識證明 <code>P0</code></a></h3>
+<p>ZK 用於「證明我知道答案且答案正確，但不暴露細節」。</p>
+<p>主流方向：</p>
+<ul>
+<li>zk-SNARK</li>
+<li>zk-STARK</li>
+</ul>
+<p>工程用途：</p>
+<ul>
+<li>L2 validity proof</li>
+<li>隱私轉帳</li>
+<li>身份最小揭露</li>
+</ul>
+<h3 id="534-二層網絡layer2-p0"><a class="header" href="#534-二層網絡layer2-p0">5.3.4 二層網絡（Layer2） <code>P0</code></a></h3>
+<p>L2 目標：降低費用、提高吞吐，同時繼承 L1 安全。</p>
+<p>主流：</p>
+<ul>
+<li>Optimistic Rollup</li>
+<li>ZK Rollup</li>
+</ul>
+<pre><code class="language-text">User Tx -&gt; L2 Sequencer -&gt; Batch/Proof -&gt; L1 Settlement
+</code></pre>
+<h3 id="535-nft-p1"><a class="header" href="#535-nft-p1">5.3.5 NFT <code>P1</code></a></h3>
+<p>NFT 是非同質資產標準化表達：</p>
+<ul>
+<li>ERC-721（單一資產）</li>
+<li>ERC-1155（多資產混合）</li>
+</ul>
+<p>工程重點：</p>
+<ul>
+<li>metadata 存儲策略（鏈上/鏈下）</li>
+<li>版權與授權模型</li>
+<li>市場流動性與洗售風險</li>
+</ul>
+<h2 id="本章總結-1"><a class="header" href="#本章總結-1">本章總結</a></h2>
+<ul>
+<li>Ethereum 提供了可程式化金融基座</li>
+<li>共識機制決定了安全與性能上限</li>
+<li>跨鏈、ZK、L2 是未來幾年的核心主線</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="第6章-區塊鏈技術的發展趨勢"><a class="header" href="#第6章-區塊鏈技術的發展趨勢">第6章 區塊鏈技術的發展趨勢</a></h1>
+<p>本章聚焦「落地」：公鏈與聯盟鏈如何選、產業怎麼用、合規如何進系統設計。</p>
+<h2 id="61-公鏈與聯盟鏈"><a class="header" href="#61-公鏈與聯盟鏈">6.1 公鏈與聯盟鏈</a></h2>
+<h3 id="611-公鏈與聯盟鏈的對比-p1"><a class="header" href="#611-公鏈與聯盟鏈的對比-p1">6.1.1 公鏈與聯盟鏈的對比 <code>P1</code></a></h3>
+<p>對比維度：</p>
+<ul>
+<li>開放性：公鏈高，聯盟鏈中</li>
+<li>去中心化：公鏈高，聯盟鏈可控</li>
+<li>性能：聯盟鏈通常更高</li>
+<li>治理：公鏈社群治理，聯盟鏈機構治理</li>
+</ul>
+<p>選型結論：</p>
+<ul>
+<li>對外資產流通與生態組合 -&gt; 公鏈</li>
+<li>跨機構內部協作與合規主導 -&gt; 聯盟鏈</li>
+</ul>
+<h3 id="612-常見聯盟鏈平臺-p2"><a class="header" href="#612-常見聯盟鏈平臺-p2">6.1.2 常見聯盟鏈平臺 <code>P2</code></a></h3>
+<p>常見平台：</p>
+<ul>
+<li>Hyperledger Fabric</li>
+<li>FISCO BCOS</li>
+<li>Quorum</li>
+</ul>
+<p>工程關注：</p>
+<ul>
+<li>權限模型</li>
+<li>節點身份管理</li>
+<li>審計接口</li>
+</ul>
+<h3 id="613-baas平臺-p2"><a class="header" href="#613-baas平臺-p2">6.1.3 BaaS平臺 <code>P2</code></a></h3>
+<p>BaaS 優點：快速部署、降低運維門檻。
+風險：供應商鎖定與可移植性不足。</p>
+<h3 id="614-區塊鏈應用的合規性-p1"><a class="header" href="#614-區塊鏈應用的合規性-p1">6.1.4 區塊鏈應用的合規性 <code>P1</code></a></h3>
+<p>合規重點：</p>
+<ul>
+<li>KYC/AML 流程與留存</li>
+<li>交易監控與可疑活動上報</li>
+<li>資料保護與跨境傳輸要求</li>
+</ul>
+<p>工程落地：</p>
+<ul>
+<li>將合規規則做成 policy engine</li>
+<li>關鍵交易保留審批證據鏈</li>
+</ul>
+<h2 id="62-聯盟鏈與基礎建設"><a class="header" href="#62-聯盟鏈與基礎建設">6.2 聯盟鏈與基礎建設</a></h2>
+<h3 id="621-數碼化身份-p2"><a class="header" href="#621-數碼化身份-p2">6.2.1 數碼化身份 <code>P2</code></a></h3>
+<p>方向：DID + VC（可驗證憑證）。
+應用：企業身份、教育證書、供應鏈角色授權。</p>
+<h3 id="622-數碼人民幣-p2"><a class="header" href="#622-數碼人民幣-p2">6.2.2 數碼人民幣 <code>P2</code></a></h3>
+<p>觀察重點：</p>
+<ul>
+<li>雙層運營模式</li>
+<li>可控匿名</li>
+<li>可程式化支付探索</li>
+</ul>
+<h3 id="623-存證溯源平臺-p2"><a class="header" href="#623-存證溯源平臺-p2">6.2.3 存證溯源平臺 <code>P2</code></a></h3>
+<p>典型場景：</p>
+<ul>
+<li>合同存證</li>
+<li>供應鏈溯源</li>
+<li>醫療/司法資料指紋</li>
+</ul>
+<h2 id="63-公鏈的熱門應用方向"><a class="header" href="#63-公鏈的熱門應用方向">6.3 公鏈的熱門應用方向</a></h2>
+<h3 id="631-去中心化交易所-p1"><a class="header" href="#631-去中心化交易所-p1">6.3.1 去中心化交易所 <code>P1</code></a></h3>
+<p>DEX 核心：</p>
+<ul>
+<li>AMM（x*y=k）</li>
+<li>集中流動性</li>
+<li>訂單路由與滑點控制</li>
+</ul>
+<p>風險：MEV、流動性斷層、預言機偏差。</p>
+<h3 id="632-defi應用簡介-p1"><a class="header" href="#632-defi應用簡介-p1">6.3.2 DeFi應用簡介 <code>P1</code></a></h3>
+<p>核心模組：</p>
+<ul>
+<li>借貸</li>
+<li>穩定幣</li>
+<li>衍生品</li>
+<li>收益聚合</li>
+</ul>
+<p>工程關鍵：</p>
+<ul>
+<li>清算機制可用性</li>
+<li>風險參數治理</li>
+<li>依賴協議傳染風險</li>
+</ul>
+<h3 id="633-ipfs應用簡介-p2"><a class="header" href="#633-ipfs應用簡介-p2">6.3.3 IPFS應用簡介 <code>P2</code></a></h3>
+<p>IPFS 是內容尋址網路，常與鏈配合儲存大文件。</p>
+<p>工程注意：</p>
+<ul>
+<li>CID 與 metadata 綁定</li>
+<li>pin 策略</li>
+<li>可用性 SLA</li>
+</ul>
+<h3 id="634-dfinity應用簡介-p2"><a class="header" href="#634-dfinity應用簡介-p2">6.3.4 DFINITY應用簡介 <code>P2</code></a></h3>
+<p>DFINITY（Internet Computer）強調鏈上可執行應用（canister）。</p>
+<p>關注點：</p>
+<ul>
+<li>執行模型</li>
+<li>開發工具鏈</li>
+<li>生態互通性</li>
+</ul>
+<h2 id="本章總結-2"><a class="header" href="#本章總結-2">本章總結</a></h2>
+<p>趨勢不是單看技術新舊，而是「安全、合規、成本、治理」四維同時可落地。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="第3篇-區塊鏈開發篇"><a class="header" href="#第3篇-區塊鏈開發篇">第3篇 區塊鏈開發篇</a></h1>
+<p>本篇涵蓋第7章到第9章，重點是從語言到工具鏈，再到錢包工程。</p>
+<h2 id="重要度分級-1"><a class="header" href="#重要度分級-1">重要度分級</a></h2>
+<ul>
+<li><code>P0</code> 必修：智能合約與錢包核心能力</li>
+<li><code>P1</code> 重要：工程最佳實踐與常見標準</li>
+<li><code>P2</code> 補充：特定案例或場景延伸</li>
+</ul>
+<h2 id="篇章定位-1"><a class="header" href="#篇章定位-1">篇章定位</a></h2>
+<ul>
+<li>第7章：Solidity 語法與物件設計基礎</li>
+<li>第8章：標準、升級、最佳實踐、Python 調用</li>
+<li>第9章：離線錢包原理與核心功能</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="第7章-solidity智能合約開發入門"><a class="header" href="#第7章-solidity智能合約開發入門">第7章 Solidity智能合約開發入門</a></h1>
+<p>本章目標是建立 Solidity 的可開發能力：能正確建模資料、寫安全函數、理解合約互動界面。</p>
+<h2 id="71-智能合約運作原理與環境搭建-p0"><a class="header" href="#71-智能合約運作原理與環境搭建-p0">7.1 智能合約運作原理與環境搭建 <code>P0</code></a></h2>
+<h3 id="711-智能合約的概念-p0"><a class="header" href="#711-智能合約的概念-p0">7.1.1 智能合約的概念 <code>P0</code></a></h3>
+<p>智能合約是「部署在鏈上的程式」，特性：</p>
+<ul>
+<li>可公開驗證</li>
+<li>狀態可追蹤</li>
+<li>結果由共識保證</li>
+</ul>
+<p>工程重點：一旦部署，修改成本很高，設計需先做風險建模。</p>
+<h3 id="712-智能合約的運作機制-p0"><a class="header" href="#712-智能合約的運作機制-p0">7.1.2 智能合約的運作機制 <code>P0</code></a></h3>
+<p>運作流程：</p>
+<ol>
+<li>使用者提交交易</li>
+<li>節點執行 EVM 字節碼</li>
+<li>產生狀態變更與事件</li>
+<li>打包進區塊</li>
+</ol>
+<pre><code class="language-text">Tx -&gt; EVM Execute -&gt; State Change + Event -&gt; Block
+</code></pre>
+<h3 id="713-智能合約運作三要素-p0"><a class="header" href="#713-智能合約運作三要素-p0">7.1.3 智能合約運作三要素 <code>P0</code></a></h3>
+<p>三要素：</p>
+<ul>
+<li><code>State</code>：儲存資料</li>
+<li><code>Function</code>：狀態轉移邏輯</li>
+<li><code>Event</code>：對外通知與索引依據</li>
+</ul>
+<h3 id="714-智能合約開發環境搭建-p0"><a class="header" href="#714-智能合約開發環境搭建-p0">7.1.4 智能合約開發環境搭建 <code>P0</code></a></h3>
+<p>建議環境：</p>
+<ul>
+<li>編譯測試：Foundry/Hardhat</li>
+<li>本地鏈：Anvil</li>
+<li>安全庫：OpenZeppelin</li>
+</ul>
+<p>最小命令流：</p>
+<ul>
+<li>編譯</li>
+<li>測試</li>
+<li>部署</li>
+<li>驗證</li>
+</ul>
+<h3 id="715-remix環境簡介-p1"><a class="header" href="#715-remix環境簡介-p1">7.1.5 Remix環境簡介 <code>P1</code></a></h3>
+<p>Remix 適合：</p>
+<ul>
+<li>快速驗證語法</li>
+<li>教學與原型</li>
+<li>小範例除錯</li>
+</ul>
+<p>不適合：</p>
+<ul>
+<li>團隊協作大專案</li>
+<li>需要完整 CI/CD 的場景</li>
+</ul>
+<h3 id="716-初識solidity-p0"><a class="header" href="#716-初識solidity-p0">7.1.6 初識Solidity <code>P0</code></a></h3>
+<p>第一原則：</p>
+<ul>
+<li>明確版本（<code>pragma solidity ^0.8.x</code>）</li>
+<li>預設安全（溢位保護、嚴格可見性）</li>
+<li>儘量用 custom error</li>
+</ul>
+<h2 id="72-solidity基礎語法-p0"><a class="header" href="#72-solidity基礎語法-p0">7.2 Solidity基礎語法 <code>P0</code></a></h2>
+<h3 id="721-solidity基礎資料類型-p0"><a class="header" href="#721-solidity基礎資料類型-p0">7.2.1 Solidity基礎資料類型 <code>P0</code></a></h3>
+<p>常用型別：</p>
+<ul>
+<li><code>uint256</code>, <code>int256</code></li>
+<li><code>bool</code></li>
+<li><code>address</code></li>
+<li><code>bytes</code>, <code>string</code></li>
+</ul>
+<p>建議：先用 <code>uint256</code>，有明確需求再做壓縮。</p>
+<h3 id="722-函數-p0"><a class="header" href="#722-函數-p0">7.2.2 函數 <code>P0</code></a></h3>
+<p>函數屬性：</p>
+<ul>
+<li>可見性：<code>public/external/internal/private</code></li>
+<li>狀態屬性：<code>view/pure/payable</code></li>
+</ul>
+<p>工程建議：</p>
+<ul>
+<li>對外函數先驗參</li>
+<li>寫操作用 custom error</li>
+</ul>
+<h3 id="723-修飾符-p0"><a class="header" href="#723-修飾符-p0">7.2.3 修飾符 <code>P0</code></a></h3>
+<p>modifier 典型用途：</p>
+<ul>
+<li>權限控制</li>
+<li>防重入</li>
+<li>狀態檢查</li>
+</ul>
+<h3 id="724-內建對象-p1"><a class="header" href="#724-內建對象-p1">7.2.4 內建對象 <code>P1</code></a></h3>
+<p>常用對象：</p>
+<ul>
+<li><code>msg</code>, <code>block</code>, <code>tx</code></li>
+</ul>
+<p>注意：避免使用 <code>tx.origin</code> 做授權。</p>
+<h3 id="725-內建函數-p1"><a class="header" href="#725-內建函數-p1">7.2.5 內建函數 <code>P1</code></a></h3>
+<p>常見內建能力：</p>
+<ul>
+<li><code>keccak256</code></li>
+<li><code>abi.encode/encodePacked</code></li>
+<li><code>ecrecover</code></li>
+</ul>
+<h3 id="726-事務控制-p0"><a class="header" href="#726-事務控制-p0">7.2.6 事務控制 <code>P0</code></a></h3>
+<ul>
+<li><code>require</code>：輸入與條件檢查</li>
+<li><code>revert</code>：主動回滾</li>
+<li><code>assert</code>：不變量檢查</li>
+</ul>
+<h3 id="727-自訂修飾符-p0"><a class="header" href="#727-自訂修飾符-p0">7.2.7 自訂修飾符 <code>P0</code></a></h3>
+<p>建議將通用安全檢查抽象成 modifier，避免漏檢。</p>
+<h2 id="73-複合資料型態與資料結構-p0"><a class="header" href="#73-複合資料型態與資料結構-p0">7.3 複合資料型態與資料結構 <code>P0</code></a></h2>
+<h3 id="731-自訂結構-p0"><a class="header" href="#731-自訂結構-p0">7.3.1 自訂結構 <code>P0</code></a></h3>
+<p>用 <code>struct</code> 建模業務狀態，如帳戶、訂單、提案。</p>
+<h3 id="732-數組和動態數組-p0"><a class="header" href="#732-數組和動態數組-p0">7.3.2 數組和動態數組 <code>P0</code></a></h3>
+<ul>
+<li>固定長度陣列：成本可預期</li>
+<li>動態陣列：彈性高，需留意 gas</li>
+</ul>
+<h3 id="733-映射-p0"><a class="header" href="#733-映射-p0">7.3.3 映射 <code>P0</code></a></h3>
+<p><code>mapping</code> 適合做 key-value 狀態索引。</p>
+<p>注意：mapping 不可直接遍歷，常需外部索引或輔助陣列。</p>
+<h3 id="734-address類型-p0"><a class="header" href="#734-address類型-p0">7.3.4 address類型 <code>P0</code></a></h3>
+<p>address 是權限與資產轉移核心型別。</p>
+<p>常見操作：</p>
+<ul>
+<li><code>address(this)</code></li>
+<li><code>payable(addr).transfer(...)</code></li>
+</ul>
+<h3 id="735-memory與storage-p0"><a class="header" href="#735-memory與storage-p0">7.3.5 memory與storage <code>P0</code></a></h3>
+<ul>
+<li><code>storage</code>：鏈上持久狀態</li>
+<li><code>memory</code>：函數暫存</li>
+</ul>
+<p>常見坑：</p>
+<ul>
+<li>對 storage 引用誤改全局狀態</li>
+<li>未理解 copy/reference 行為</li>
+</ul>
+<h2 id="74-solidity物件導向編程-p0"><a class="header" href="#74-solidity物件導向編程-p0">7.4 Solidity物件導向編程 <code>P0</code></a></h2>
+<h3 id="741-接口-p0"><a class="header" href="#741-接口-p0">7.4.1 接口 <code>P0</code></a></h3>
+<p>interface 用於描述外部合約函數簽名，支援跨合約調用。</p>
+<h3 id="742-函數選擇器與接口id-p0"><a class="header" href="#742-函數選擇器與接口id-p0">7.4.2 函數選擇器與接口ID <code>P0</code></a></h3>
+<ul>
+<li>selector：函數簽名 hash 前 4 bytes</li>
+<li>interface id：常見於 ERC-165 能力探測</li>
+</ul>
+<h3 id="743-library-p1"><a class="header" href="#743-library-p1">7.4.3 library <code>P1</code></a></h3>
+<p>library 適合抽離通用邏輯，提升重用性。</p>
+<h3 id="744-合約繼承-p0"><a class="header" href="#744-合約繼承-p0">7.4.4 合約繼承 <code>P0</code></a></h3>
+<p>繼承可以重用代碼，但要注意線性化與 override 規則。</p>
+<h3 id="745-abstract關鍵字-p1"><a class="header" href="#745-abstract關鍵字-p1">7.4.5 abstract關鍵字 <code>P1</code></a></h3>
+<p>abstract contract 用於定義未完整實作的基底規範。</p>
+<h2 id="本章總結-3"><a class="header" href="#本章總結-3">本章總結</a></h2>
+<ul>
+<li>熟悉語法只是起點，關鍵在「狀態建模 + 權限控制 + 錯誤處理」。</li>
+<li>任何可寫狀態的函數都要先做威脅建模。</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="第8章-solidity智能合約開發進階"><a class="header" href="#第8章-solidity智能合約開發進階">第8章 Solidity智能合約開發進階</a></h1>
+<p>本章目標是把合約能力提升到可上線等級：標準、升級、架構模式、安全最佳實踐與 Python 調用。</p>
+<h2 id="81-solidity經典案例"><a class="header" href="#81-solidity經典案例">8.1 Solidity經典案例</a></h2>
+<h3 id="811-智能合約開發的一般步驟-p1"><a class="header" href="#811-智能合約開發的一般步驟-p1">8.1.1 智能合約開發的一般步驟 <code>P1</code></a></h3>
+<p>通用流程：</p>
+<ol>
+<li>寫規格與狀態機</li>
+<li>先寫測試（unit/fuzz/invariant）</li>
+<li>實作合約</li>
+<li>審計與修補</li>
+<li>部署與監控</li>
+</ol>
+<h3 id="812-土豪發紅包-p2"><a class="header" href="#812-土豪發紅包-p2">8.1.2 土豪發紅包 <code>P2</code></a></h3>
+<p>練習重點：</p>
+<ul>
+<li>批量分發</li>
+<li>名單驗證</li>
+<li>防重複領取</li>
+</ul>
+<h3 id="813-我要開銀行-p1"><a class="header" href="#813-我要開銀行-p1">8.1.3 我要開銀行 <code>P1</code></a></h3>
+<p>練習重點：</p>
+<ul>
+<li>存取款模型</li>
+<li>權限與限額</li>
+<li>事件記錄與對帳</li>
+</ul>
+<h3 id="814-智能拍賣-p1"><a class="header" href="#814-智能拍賣-p1">8.1.4 智能拍賣 <code>P1</code></a></h3>
+<p>練習重點：</p>
+<ul>
+<li>出價排序</li>
+<li>截止時間</li>
+<li>未中標退款安全性</li>
+</ul>
+<h2 id="82-erc標準-p0"><a class="header" href="#82-erc標準-p0">8.2 ERC標準 <code>P0</code></a></h2>
+<h3 id="821-erc概述-p0"><a class="header" href="#821-erc概述-p0">8.2.1 ERC概述 <code>P0</code></a></h3>
+<p>ERC 是互操作標準，讓錢包、交易所、DApp 可以一致整合。</p>
+<h3 id="822-erc-20標準-p0"><a class="header" href="#822-erc-20標準-p0">8.2.2 ERC-20標準 <code>P0</code></a></h3>
+<p>核心函數：</p>
+<ul>
+<li><code>transfer</code></li>
+<li><code>approve</code></li>
+<li><code>transferFrom</code></li>
+<li><code>balanceOf</code></li>
+</ul>
+<p>常見坑：</p>
+<ul>
+<li>allowance 覆蓋競態</li>
+<li>decimals 顯示錯誤</li>
+</ul>
+<h3 id="823-erc-165標準-p0"><a class="header" href="#823-erc-165標準-p0">8.2.3 ERC-165標準 <code>P0</code></a></h3>
+<p>用途：合約能力探測（<code>supportsInterface</code>）。</p>
+<h3 id="824-erc-721nft標準-p1"><a class="header" href="#824-erc-721nft標準-p1">8.2.4 ERC-721（NFT標準） <code>P1</code></a></h3>
+<p>重點：</p>
+<ul>
+<li>單 token 唯一性</li>
+<li>metadata 管理</li>
+<li>批量 mint 與授權策略</li>
+</ul>
+<h2 id="83-可升級合約-p0"><a class="header" href="#83-可升級合約-p0">8.3 可升級合約 <code>P0</code></a></h2>
+<h3 id="831-不可篡改與可升級之間的矛盾-p0"><a class="header" href="#831-不可篡改與可升級之間的矛盾-p0">8.3.1 不可篡改與可升級之間的矛盾 <code>P0</code></a></h3>
+<p>矛盾點：</p>
+<ul>
+<li>不可變保安全與可預期</li>
+<li>可升級保可維護與修復</li>
+</ul>
+<p>平衡做法：</p>
+<ul>
+<li>Proxy + Timelock + 多簽治理</li>
+</ul>
+<h3 id="832-跨合約調用-p0"><a class="header" href="#832-跨合約調用-p0">8.3.2 跨合約調用 <code>P0</code></a></h3>
+<p>跨合約是組合能力來源，也是攻擊面來源。</p>
+<p>要點：</p>
+<ul>
+<li>外部調用前先更新內部狀態</li>
+<li>外部合約回傳值必檢查</li>
+</ul>
+<h3 id="833-透過底層函數呼叫合約-p0"><a class="header" href="#833-透過底層函數呼叫合約-p0">8.3.3 透過底層函數呼叫合約 <code>P0</code></a></h3>
+<p><code>call/delegatecall/staticcall</code> 使用要點：</p>
+<ul>
+<li>僅在必要時用底層調用</li>
+<li>必須檢查 success 與返回資料</li>
+</ul>
+<h3 id="834-主從式可升級合約-p1"><a class="header" href="#834-主從式可升級合約-p1">8.3.4 主—從式可升級合約 <code>P1</code></a></h3>
+<p>主從模式可隔離邏輯與配置，但需清楚權限邊界。</p>
+<h3 id="835-代理程式儲存式可升級合約-p0"><a class="header" href="#835-代理程式儲存式可升級合約-p0">8.3.5 代理程式—儲存式可升級合約 <code>P0</code></a></h3>
+<p>Proxy 模式關鍵：</p>
+<ul>
+<li>storage layout 不可破壞</li>
+<li>initializer 只能執行一次</li>
+<li>升級權限需多簽與延遲</li>
+</ul>
+<h2 id="84-合約開發最佳實踐-p0"><a class="header" href="#84-合約開發最佳實踐-p0">8.4 合約開發最佳實踐 <code>P0</code></a></h2>
+<h3 id="841-最佳實務概述-p0"><a class="header" href="#841-最佳實務概述-p0">8.4.1 最佳實務概述 <code>P0</code></a></h3>
+<ul>
+<li>權限最小化</li>
+<li>事件完整記錄</li>
+<li>失敗可回滾</li>
+<li>測試先行</li>
+</ul>
+<h3 id="842-工廠模式-p1"><a class="header" href="#842-工廠模式-p1">8.4.2 工廠模式 <code>P1</code></a></h3>
+<p>用工廠合約批量部署同類合約，提高一致性。</p>
+<h3 id="843-儲存註冊表模式-p1"><a class="header" href="#843-儲存註冊表模式-p1">8.4.3 儲存註冊表模式 <code>P1</code></a></h3>
+<p>中心註冊表管理版本、地址與參數，利於治理。</p>
+<h3 id="844-遍歷表疊代器-p1"><a class="header" href="#844-遍歷表疊代器-p1">8.4.4 遍歷表疊代器 <code>P1</code></a></h3>
+<p>避免鏈上大迴圈，採分批與游標式遍歷。</p>
+<h3 id="845-避免重入攻擊-p0"><a class="header" href="#845-避免重入攻擊-p0">8.4.5 避免重入攻擊 <code>P0</code></a></h3>
+<p>防禦組合：</p>
+<ul>
+<li>CEI</li>
+<li>reentrancy guard</li>
+<li>pull payment</li>
+</ul>
+<h3 id="846-警惕外部合約調用-p0"><a class="header" href="#846-警惕外部合約調用-p0">8.4.6 警惕外部合約調用 <code>P0</code></a></h3>
+<p>外部調用要當成不可信：</p>
+<ul>
+<li>可能回滾</li>
+<li>可能耗盡 gas</li>
+<li>可能惡意 callback</li>
+</ul>
+<h2 id="85-python與智能合約調用-p0"><a class="header" href="#85-python與智能合約調用-p0">8.5 Python與智能合約調用 <code>P0</code></a></h2>
+<h3 id="851-rpc原理分析-p0"><a class="header" href="#851-rpc原理分析-p0">8.5.1 RPC原理分析 <code>P0</code></a></h3>
+<p>RPC 是節點對外接口，典型方法：</p>
+<ul>
+<li><code>eth_call</code></li>
+<li><code>eth_estimateGas</code></li>
+<li><code>eth_sendRawTransaction</code></li>
+</ul>
+<h3 id="852-python-sdk簡介-p1"><a class="header" href="#852-python-sdk簡介-p1">8.5.2 Python-SDK簡介 <code>P1</code></a></h3>
+<p>常用 <code>web3.py</code>：</p>
+<ul>
+<li>連節點</li>
+<li>載 ABI</li>
+<li>發交易</li>
+<li>查回執</li>
+</ul>
+<h3 id="853-python呼叫智能合約步驟-p0"><a class="header" href="#853-python呼叫智能合約步驟-p0">8.5.3 Python呼叫智能合約步驟 <code>P0</code></a></h3>
+<ol>
+<li>建立 provider</li>
+<li>載入 ABI + address</li>
+<li>建 call/tx</li>
+<li>簽名與發送</li>
+</ol>
+<h3 id="854-節點連接-p0"><a class="header" href="#854-節點連接-p0">8.5.4 節點連接 <code>P0</code></a></h3>
+<p>建議：</p>
+<ul>
+<li>主備 RPC</li>
+<li>請求重試與超時</li>
+<li>連線健康檢查</li>
+</ul>
+<h3 id="855-abi分析與編譯-p0"><a class="header" href="#855-abi分析與編譯-p0">8.5.5 ABI分析與編譯 <code>P0</code></a></h3>
+<p>ABI 是調用契約，版本漂移會導致調用錯誤。</p>
+<h3 id="856-透過python調用智能合約-p0"><a class="header" href="#856-透過python調用智能合約-p0">8.5.6 透過Python調用智能合約 <code>P0</code></a></h3>
+<p>工程要點：</p>
+<ul>
+<li>nonce 競態控制</li>
+<li>gas 估算與上限保護</li>
+<li>交易狀態追蹤（pending -&gt; confirmed）</li>
+</ul>
+<h2 id="本章總結-4"><a class="header" href="#本章總結-4">本章總結</a></h2>
+<ul>
+<li>能寫合約不等於能上線，升級治理與安全流程才是核心。</li>
+<li>SDK 調用端同樣是風險面，必須納入測試與監控。</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="第9章-python語言離線錢包開發"><a class="header" href="#第9章-python語言離線錢包開發">第9章 Python語言離線錢包開發</a></h1>
+<p>本章目標是做出安全可用的離線錢包方案：私鑰隔離、交易可驗證、查詢可追蹤。</p>
+<h2 id="91-區塊鏈錢包原理-p0"><a class="header" href="#91-區塊鏈錢包原理-p0">9.1 區塊鏈錢包原理 <code>P0</code></a></h2>
+<h3 id="911-區塊鏈錢包的核心原理-p0"><a class="header" href="#911-區塊鏈錢包的核心原理-p0">9.1.1 區塊鏈錢包的核心原理 <code>P0</code></a></h3>
+<p>錢包本質：</p>
+<ul>
+<li>管理私鑰與地址</li>
+<li>對交易做簽名</li>
+<li>提供查詢與廣播流程</li>
+</ul>
+<p>不是功能：</p>
+<ul>
+<li>鏈上資產保管（資產在鏈上）</li>
+</ul>
+<pre><code class="language-text">Intent -&gt; Build Tx -&gt; Offline Sign -&gt; Online Broadcast -&gt; Track Status
+</code></pre>
+<h3 id="912-助記詞如何產生與驗證-p0"><a class="header" href="#912-助記詞如何產生與驗證-p0">9.1.2 助記詞如何產生與驗證 <code>P0</code></a></h3>
+<p>建議採用：</p>
+<ul>
+<li>BIP-39 助記詞</li>
+<li>BIP-32/44 派生路徑</li>
+</ul>
+<p>安全要點：</p>
+<ul>
+<li>助記詞離線保存</li>
+<li>passphrase 與助記詞分開保管</li>
+<li>驗證 checksum</li>
+</ul>
+<h3 id="913-如何儲存私鑰-p0"><a class="header" href="#913-如何儲存私鑰-p0">9.1.3 如何儲存私鑰 <code>P0</code></a></h3>
+<p>推薦做法：</p>
+<ul>
+<li>keystore 加密（口令 + KDF）</li>
+<li>硬體錢包或 HSM</li>
+<li>交易簽名與網路隔離</li>
+</ul>
+<p>禁忌：</p>
+<ul>
+<li>私鑰明文存檔</li>
+<li>私鑰進日誌</li>
+<li>未授權備份</li>
+</ul>
+<h2 id="92-區塊鏈錢包核心功能實現-p0"><a class="header" href="#92-區塊鏈錢包核心功能實現-p0">9.2 區塊鏈錢包核心功能實現 <code>P0</code></a></h2>
+<h3 id="921-錢包如何支援coin轉移-p0"><a class="header" href="#921-錢包如何支援coin轉移-p0">9.2.1 錢包如何支援Coin轉移 <code>P0</code></a></h3>
+<p>UTXO 鏈：</p>
+<ul>
+<li>選 UTXO</li>
+<li>建 inputs/outputs</li>
+<li>離線簽名</li>
+<li>上線廣播</li>
+</ul>
+<p>Account 鏈：</p>
+<ul>
+<li>查 nonce/gas</li>
+<li>建交易</li>
+<li>離線簽名</li>
+<li>上線廣播</li>
+</ul>
+<h3 id="922-錢包如何支援coin查詢-p0"><a class="header" href="#922-錢包如何支援coin查詢-p0">9.2.2 錢包如何支援Coin查詢 <code>P0</code></a></h3>
+<p>查詢來源：</p>
+<ul>
+<li>節點 RPC</li>
+<li>索引服務</li>
+</ul>
+<p>查詢類型：</p>
+<ul>
+<li>可用餘額</li>
+<li>已確認餘額</li>
+<li>交易歷史</li>
+</ul>
+<h3 id="923-erc-20標準實現與部署-p0"><a class="header" href="#923-erc-20標準實現與部署-p0">9.2.3 ERC-20標準實現與部署 <code>P0</code></a></h3>
+<p>核心：</p>
+<ul>
+<li>實作標準函數與事件</li>
+<li>部署後驗證合約</li>
+<li>配置 token metadata</li>
+</ul>
+<p>部署注意：</p>
+<ul>
+<li>decimals 一次定義</li>
+<li>mint 權限治理（多簽/時鎖）</li>
+</ul>
+<h3 id="924-錢包如何支援token轉移-p0"><a class="header" href="#924-錢包如何支援token轉移-p0">9.2.4 錢包如何支援Token轉移 <code>P0</code></a></h3>
+<p>流程：</p>
+<ol>
+<li>載入 ABI</li>
+<li><code>transfer(to, amount)</code> 打包 data</li>
+<li>建交易並簽名</li>
+<li>發送交易並追 receipt</li>
+</ol>
+<h3 id="925-錢包如何支援token查詢-p0"><a class="header" href="#925-錢包如何支援token查詢-p0">9.2.5 錢包如何支援Token查詢 <code>P0</code></a></h3>
+<p>必要查詢：</p>
+<ul>
+<li><code>balanceOf</code></li>
+<li><code>allowance</code></li>
+<li>Token 清單與價格映射（可選）</li>
+</ul>
+<p>工程要點：</p>
+<ul>
+<li>多鏈多 token 用統一主鍵管理</li>
+<li>對 decimals/symbol 做快取</li>
+</ul>
+<h3 id="926-事件訂閱-p0"><a class="header" href="#926-事件訂閱-p0">9.2.6 事件訂閱 <code>P0</code></a></h3>
+<p>用途：</p>
+<ul>
+<li>實時更新交易狀態</li>
+<li>觸發通知與風控</li>
+<li>事後審計</li>
+</ul>
+<p>訂閱策略：</p>
+<ul>
+<li>websocket 實時訂閱</li>
+<li>定時補塊避免漏事件</li>
+<li>重組時回滾本地狀態</li>
+</ul>
+<h2 id="python-工程實作骨架"><a class="header" href="#python-工程實作骨架">Python 工程實作骨架</a></h2>
+<pre><code class="language-python">from web3 import Web3
+
+w3 = Web3(Web3.HTTPProvider(RPC_URL))
+acct = w3.eth.account.from_key(PRIVATE_KEY)
+
+tx = {
+    "to": to_addr,
+    "value": amount_wei,
+    "nonce": w3.eth.get_transaction_count(acct.address),
+    "gas": 21000,
+    "maxFeePerGas": w3.to_wei("30", "gwei"),
+    "maxPriorityFeePerGas": w3.to_wei("2", "gwei"),
+    "chainId": chain_id,
+}
+
+signed = acct.sign_transaction(tx)
+tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
+</code></pre>
+<h2 id="常見坑與修正"><a class="header" href="#常見坑與修正">常見坑與修正</a></h2>
+<ul>
+<li>nonce 衝突：引入 nonce manager</li>
+<li>gas 估算偏低：加安全係數 + 模擬</li>
+<li>盲簽風險：簽名前展示可讀交易摘要</li>
+<li>事件漏單：補塊掃描 + 去重存儲</li>
+</ul>
+<h2 id="本章總結-5"><a class="header" href="#本章總結-5">本章總結</a></h2>
+<p>離線錢包不是功能集合，而是安全流程：</p>
+<ul>
+<li>密鑰隔離</li>
+<li>簽名可信</li>
+<li>交易可追</li>
+<li>事故可回應</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="第4篇-go語言區塊鏈實作篇"><a class="header" href="#第4篇-go語言區塊鏈實作篇">第4篇 Go語言區塊鏈實作篇</a></h1>
+<p>這一篇是偏工程落地的 Go 路線，從原理到實作一條龍。</p>
+<h2 id="重要度分級-2"><a class="header" href="#重要度分級-2">重要度分級</a></h2>
+<ul>
+<li><code>P0</code> 必修：直接影響你是否能寫出可運行鏈/錢包</li>
+<li><code>P1</code> 重要：提升架構品質與擴展能力</li>
+<li><code>P2</code> 補充：行業背景與案例延伸</li>
+</ul>
+<h2 id="建議學習路徑"><a class="header" href="#建議學習路徑">建議學習路徑</a></h2>
+<ol>
+<li>先讀第3章建立底層概念</li>
+<li>再做第4章合約與 Go 調用</li>
+<li>接第5章從零實作鏈核心</li>
+<li>最後第6章完成離線錢包</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="第3章-區塊鏈原理發展與應用"><a class="header" href="#第3章-區塊鏈原理發展與應用">第3章 區塊鏈原理、發展與應用</a></h1>
+<p>本章目標是建立能落地開發的底層心智模型：你要知道鏈為何存在、如何達成一致、資料怎麼驗證、系統如何選型。</p>
+<h2 id="31-區塊鏈基本原理"><a class="header" href="#31-區塊鏈基本原理">3.1 區塊鏈基本原理</a></h2>
+<h3 id="311-區塊鏈技術為什麼會產生-p0"><a class="header" href="#311-區塊鏈技術為什麼會產生-p0">3.1.1 區塊鏈技術為什麼會產生 <code>P0</code></a></h3>
+<p>在傳統中心化系統裡，資料正確性來自單一權威（銀行、平台、政府資料庫）。
+區塊鏈的核心問題是：</p>
+<ul>
+<li>如果沒有中心機構，如何讓所有節點相信「同一本帳」？</li>
+<li>如果人人可發交易，如何防止同一筆資產被重複花費（雙花）？</li>
+</ul>
+<p>工程上可把區塊鏈理解為三件事的組合：</p>
+<ol>
+<li><code>資料結構</code>：用 hash 鏈接區塊，保證歷史難以篡改。</li>
+<li><code>網路協議</code>：用 P2P 傳播交易與區塊。</li>
+<li><code>共識機制</code>：決定哪條鏈是全網接受的正確歷史。</li>
+</ol>
+<h3 id="312-什麼是-hash-函數-p0"><a class="header" href="#312-什麼是-hash-函數-p0">3.1.2 什麼是 hash 函數 <code>P0</code></a></h3>
+<p>hash 函數把任意長度輸入映射成固定長度輸出，典型特性：</p>
+<ul>
+<li>不可逆：難以從 hash 反推出原文</li>
+<li>抗碰撞：難找兩份不同資料得到同 hash</li>
+<li>雪崩效應：輸入改一點，輸出大幅改變</li>
+</ul>
+<p>在區塊鏈中，hash 用於：</p>
+<ul>
+<li>交易 ID</li>
+<li>區塊 ID</li>
+<li>區塊鏈接（前一區塊 hash）</li>
+<li>Merkle Root（交易集合摘要）</li>
+</ul>
+<p>Go 實作要點：</p>
+<ul>
+<li>使用 <code>crypto/sha256</code></li>
+<li>輸入要先序列化成穩定格式</li>
+<li>相同資料必須得到相同 hash</li>
+</ul>
+<pre><code class="language-go">sum := sha256.Sum256(data)
+hexID := hex.EncodeToString(sum[:])
+</code></pre>
+<p>常見坑：</p>
+<ul>
+<li>直接 <code>fmt.Sprintf</code> 拼字串做 hash，格式不穩定</li>
+<li>忘記固定欄位順序導致 hash 不一致</li>
+</ul>
+<h3 id="313-p2p-網絡簡介-p0"><a class="header" href="#313-p2p-網絡簡介-p0">3.1.3 P2P 網絡簡介 <code>P0</code></a></h3>
+<p>P2P 是節點對等連線：每個節點同時是 client 與 server。</p>
+<p>最小網路流程：</p>
+<ol>
+<li>節點發現（bootstrap / DNS / seed）</li>
+<li>建立連線（TCP/QUIC）</li>
+<li>握手（版本、鏈高度、能力）</li>
+<li>訊息傳播（交易、區塊、請求/回應）</li>
+</ol>
+<pre><code class="language-text">Node A &lt;----&gt; Node B &lt;----&gt; Node C
+   ^            |             |
+   +------------+-------------+
+</code></pre>
+<p>Go 實作要點：</p>
+<ul>
+<li>先做單一消息協議（<code>version</code>, <code>inv</code>, <code>getdata</code>, <code>block</code>）</li>
+<li>每個連線獨立 goroutine</li>
+<li>設計 message envelope：<code>type + payload + checksum</code></li>
+</ul>
+<p>常見坑：</p>
+<ul>
+<li>沒有重放保護，收到同樣資料無限轉發</li>
+<li>沒有節流，易被垃圾訊息打爆</li>
+</ul>
+<h3 id="314-pow-共識算法-p0"><a class="header" href="#314-pow-共識算法-p0">3.1.4 PoW 共識算法 <code>P0</code></a></h3>
+<p>PoW（Proof of Work）透過計算成本競爭出塊權：</p>
+<ul>
+<li>礦工調整 nonce，尋找符合難度目標的 hash</li>
+<li>全網接受「累積工作量最高」的鏈</li>
+</ul>
+<p>核心公式（概念）：</p>
+<ul>
+<li>找到 <code>hash(block_header) &lt; target</code></li>
+<li><code>target</code> 越小，難度越高</li>
+</ul>
+<p>工程視角：</p>
+<ul>
+<li>PoW 提供的是機率最終性，不是絕對最終性</li>
+<li>確認數越高，被回滾機率越低</li>
+</ul>
+<p>Go 實作要點：</p>
+<ul>
+<li>用 <code>math/big</code> 比較 hash 與 target</li>
+<li>難度調整與區塊時間要解耦</li>
+<li>驗證端一定要重算 header hash</li>
+</ul>
+<p>常見坑：</p>
+<ul>
+<li>只驗 nonce 不驗完整 header</li>
+<li>難度固定不調整，導致出塊失衡</li>
+</ul>
+<h3 id="315-utxo-模型-p0"><a class="header" href="#315-utxo-模型-p0">3.1.5 UTXO 模型 <code>P0</code></a></h3>
+<p>UTXO（未花費輸出）模型不是改餘額，而是消耗舊輸出、產生新輸出：</p>
+<pre><code class="language-text">Inputs(引用舊UTXO) -&gt; Validation -&gt; Outputs(新UTXO + 找零)
+</code></pre>
+<p>交易費用：
+<code>fee = sum(inputs) - sum(outputs)</code></p>
+<p>為什麼 UTXO 重要：</p>
+<ul>
+<li>天然可追溯資產來源</li>
+<li>不同 UTXO 可並行驗證</li>
+<li>有利於審計與安全邊界設計</li>
+</ul>
+<p>Go 實作要點：</p>
+<ul>
+<li>建立 <code>TXInput</code>, <code>TXOutput</code>, <code>Transaction</code></li>
+<li>維護 UTXO 集索引</li>
+<li>coin selection 與 change address 分離</li>
+</ul>
+<p>常見坑：</p>
+<ul>
+<li>找零輸出漏建，資金等於白燒</li>
+<li>多輸入簽名只簽了一部分輸入</li>
+</ul>
+<h2 id="32-區塊鏈發展歷程"><a class="header" href="#32-區塊鏈發展歷程">3.2 區塊鏈發展歷程</a></h2>
+<h3 id="321-區塊鏈發展現狀-p1"><a class="header" href="#321-區塊鏈發展現狀-p1">3.2.1 區塊鏈發展現狀 <code>P1</code></a></h3>
+<p>現況是多鏈並行：</p>
+<ul>
+<li>L1 提供安全與結算</li>
+<li>L2 提供擴容與低費</li>
+<li>應用端分化為 DeFi、支付、RWA、遊戲、社交</li>
+</ul>
+<h3 id="322-區塊鏈-20-時代-p1"><a class="header" href="#322-區塊鏈-20-時代-p1">3.2.2 區塊鏈 2.0 時代 <code>P1</code></a></h3>
+<p>2.0 一般指智能合約時代：</p>
+<ul>
+<li>不只轉帳，而是鏈上程式</li>
+<li>出現可組合協議（借貸、交易、衍生品）</li>
+</ul>
+<h3 id="323-區塊鏈行業未來展望-p1"><a class="header" href="#323-區塊鏈行業未來展望-p1">3.2.3 區塊鏈行業未來展望 <code>P1</code></a></h3>
+<p>主要方向：</p>
+<ul>
+<li>ZK 証明普及</li>
+<li>Account Abstraction 提升錢包 UX</li>
+<li>合規與鏈上身份整合</li>
+<li>跨鏈互操作標準化</li>
+</ul>
+<h2 id="33-區塊鏈開發技術選型"><a class="header" href="#33-區塊鏈開發技術選型">3.3 區塊鏈開發技術選型</a></h2>
+<h3 id="331-dapp-架構分析-p0"><a class="header" href="#331-dapp-架構分析-p0">3.3.1 DApp 架構分析 <code>P0</code></a></h3>
+<p>標準 DApp 分層：</p>
+<pre><code class="language-text">Frontend -&gt; API/Backend -&gt; Wallet/Signer -&gt; RPC/Node -&gt; Smart Contract
+                                     |
+                                     +-&gt; Indexer/DB/Monitoring
+</code></pre>
+<p>選型檢查：</p>
+<ul>
+<li>鏈：成本、最終性、開發工具、生態流動性</li>
+<li>節點：自建 + 第三方雙路</li>
+<li>索引：即時查詢與歷史分析分離</li>
+<li>風控：交易模擬、限額、名單、告警</li>
+</ul>
+<h3 id="332-公鏈與聯盟鏈之爭-p1"><a class="header" href="#332-公鏈與聯盟鏈之爭-p1">3.3.2 公鏈與聯盟鏈之爭 <code>P1</code></a></h3>
+<ul>
+<li>公鏈：開放、抗審查、治理慢</li>
+<li>聯盟鏈：可控、性能高、信任假設較集中</li>
+</ul>
+<p>決策原則：</p>
+<ul>
+<li>對外資產流通與可組合性 -&gt; 公鏈優先</li>
+<li>企業內部多方協作與合規 -&gt; 聯盟鏈可行</li>
+</ul>
+<h2 id="34-區塊鏈行業應用示例"><a class="header" href="#34-區塊鏈行業應用示例">3.4 區塊鏈行業應用示例</a></h2>
+<h3 id="341-數字金融-p1"><a class="header" href="#341-數字金融-p1">3.4.1 數字金融 <code>P1</code></a></h3>
+<ul>
+<li>支付結算</li>
+<li>借貸與抵押</li>
+<li>資產代幣化</li>
+</ul>
+<h3 id="342-電子存證-p2"><a class="header" href="#342-電子存證-p2">3.4.2 電子存證 <code>P2</code></a></h3>
+<ul>
+<li>文件 hash 上鏈</li>
+<li>時間戳與證據鏈</li>
+</ul>
+<h3 id="343-食品安全-p2"><a class="header" href="#343-食品安全-p2">3.4.3 食品安全 <code>P2</code></a></h3>
+<ul>
+<li>供應鏈節點上傳批次資料</li>
+<li>以不可篡改日誌提供追溯</li>
+</ul>
+<h2 id="實訓區塊鏈理論在線-demo-演示-p1"><a class="header" href="#實訓區塊鏈理論在線-demo-演示-p1">實訓：區塊鏈理論在線 demo 演示 <code>P1</code></a></h2>
+<p>建議做一個最小 demo：</p>
+<ol>
+<li>上傳一段文字，計算 hash</li>
+<li>模擬打包到區塊，生成前後鏈接</li>
+<li>模擬 PoW 挖礦（低難度）</li>
+<li>模擬 UTXO 交易與找零</li>
+</ol>
+<p>驗收點：</p>
+<ul>
+<li>任意改動歷史交易會讓後續區塊校驗失敗</li>
+<li>UTXO 花費後不可再次花費</li>
+</ul>
+<h2 id="本章總結-6"><a class="header" href="#本章總結-6">本章總結</a></h2>
+<p>這章要記住的工程核心：</p>
+<ul>
+<li><code>hash</code> 解決資料完整性</li>
+<li><code>P2P</code> 解決資料傳播</li>
+<li><code>PoW/共識</code> 解決誰是正確歷史</li>
+<li><code>UTXO</code> 解決價值轉移與可追蹤</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="第4章-go-語言區塊鏈初級應用開發"><a class="header" href="#第4章-go-語言區塊鏈初級應用開發">第4章 Go 語言區塊鏈初級應用開發</a></h1>
+<p>本章目標是打通「寫合約 -&gt; 部署 -&gt; 用 Go 調用 -&gt; 簽名送交易 -&gt; 訂閱事件」完整路徑。</p>
+<h2 id="41-智能合約開發"><a class="header" href="#41-智能合約開發">4.1 智能合約開發</a></h2>
+<h3 id="411-合約開發環境搭建-p0"><a class="header" href="#411-合約開發環境搭建-p0">4.1.1 合約開發環境搭建 <code>P0</code></a></h3>
+<p>建議工具鏈：</p>
+<ul>
+<li>編譯與測試：<code>Foundry</code> 或 <code>Hardhat</code></li>
+<li>本地鏈：<code>anvil</code> 或 <code>hardhat node</code></li>
+<li>Go SDK：<code>go-ethereum</code></li>
+<li>錢包：測試私鑰/助記詞（僅測試用途）</li>
+</ul>
+<p>最小流程：</p>
+<ol>
+<li>建立專案與合約目錄</li>
+<li>安裝 Solidity 編譯器</li>
+<li>跑單元測試</li>
+<li>部署到本地鏈並保存 ABI/Bytecode</li>
+</ol>
+<p>常見坑：</p>
+<ul>
+<li>Solidity 版本與 OpenZeppelin 套件版本不匹配</li>
+<li>本地鏈 chain id 與簽名 chain id 不一致</li>
+</ul>
+<h3 id="412-初識-solidity-p0"><a class="header" href="#412-初識-solidity-p0">4.1.2 初識 Solidity <code>P0</code></a></h3>
+<p>關鍵語法：</p>
+<ul>
+<li><code>contract</code>、<code>state variable</code></li>
+<li><code>constructor</code></li>
+<li><code>function</code>（<code>view</code>/<code>pure</code>/<code>payable</code>）</li>
+<li><code>event</code> 與 <code>emit</code></li>
+</ul>
+<pre><code class="language-solidity">pragma solidity ^0.8.24;
+
+contract Counter {
+    uint256 public value;
+    event Increased(address indexed caller, uint256 newValue);
+
+    function inc() external {
+        value += 1;
+        emit Increased(msg.sender, value);
+    }
+}
+</code></pre>
+<h3 id="413-智能合約有哪些數據類型-p0"><a class="header" href="#413-智能合約有哪些數據類型-p0">4.1.3 智能合約有哪些數據類型 <code>P0</code></a></h3>
+<p>基礎型別：</p>
+<ul>
+<li><code>uint/int</code></li>
+<li><code>bool</code></li>
+<li><code>address</code></li>
+<li><code>bytesN</code> / <code>bytes</code></li>
+<li><code>string</code></li>
+</ul>
+<p>設計準則：</p>
+<ul>
+<li>能用 <code>uint256</code> 就先用 <code>uint256</code></li>
+<li>需省 gas 才考慮 packing</li>
+<li>會擴容的集合用 mapping + index</li>
+</ul>
+<h3 id="414-什麼是內建對象-p1"><a class="header" href="#414-什麼是內建對象-p1">4.1.4 什麼是內建對象 <code>P1</code></a></h3>
+<p>常見內建上下文：</p>
+<ul>
+<li><code>msg.sender</code>, <code>msg.value</code>, <code>msg.data</code></li>
+<li><code>tx.origin</code>（通常不建議用於授權）</li>
+<li><code>block.timestamp</code>, <code>block.number</code></li>
+</ul>
+<h3 id="415-智能合約的函數-p0"><a class="header" href="#415-智能合約的函數-p0">4.1.5 智能合約的函數 <code>P0</code></a></h3>
+<p>函數可見性：</p>
+<ul>
+<li><code>public</code>, <code>external</code>, <code>internal</code>, <code>private</code></li>
+</ul>
+<p>函數狀態修飾：</p>
+<ul>
+<li><code>view</code>: 不改狀態</li>
+<li><code>pure</code>: 不讀不改狀態</li>
+<li><code>payable</code>: 可收 ETH</li>
+</ul>
+<p>工程建議：</p>
+<ul>
+<li>對外函數先做參數驗證</li>
+<li>使用 custom error 降 gas</li>
+</ul>
+<h3 id="416-函數修飾符-p0"><a class="header" href="#416-函數修飾符-p0">4.1.6 函數修飾符 <code>P0</code></a></h3>
+<p>modifier 用來封裝前置檢查：</p>
+<ul>
+<li>權限檢查</li>
+<li>狀態檢查</li>
+<li>重入鎖</li>
+</ul>
+<pre><code class="language-solidity">modifier onlyOwner() {
+    require(msg.sender == owner, "not owner");
+    _;
+}
+</code></pre>
+<h3 id="417-巧用複合類型-p0"><a class="header" href="#417-巧用複合類型-p0">4.1.7 巧用複合類型 <code>P0</code></a></h3>
+<p>重點：</p>
+<ul>
+<li><code>struct</code> 建模</li>
+<li><code>mapping(address =&gt; User)</code> 儲存帳戶資料</li>
+<li><code>array</code> 做可遍歷索引</li>
+</ul>
+<p>常見模式：</p>
+<ul>
+<li>mapping 存資料 + array 存 key</li>
+<li>避免在鏈上做大型遍歷</li>
+</ul>
+<h3 id="418-斷言處理與自定義修飾符-p0"><a class="header" href="#418-斷言處理與自定義修飾符-p0">4.1.8 斷言處理與自定義修飾符 <code>P0</code></a></h3>
+<p>錯誤處理：</p>
+<ul>
+<li><code>require</code>: 驗證外部輸入或條件</li>
+<li><code>revert</code>: 主動回滾</li>
+<li><code>assert</code>: 僅用於不變量</li>
+</ul>
+<pre><code class="language-solidity">error AmountTooSmall(uint256 min, uint256 got);
+
+modifier minAmount(uint256 amount) {
+    if (amount &lt; 1 ether) revert AmountTooSmall(1 ether, amount);
+    _;
+}
+</code></pre>
+<h3 id="419-經典智能合約案例-p1"><a class="header" href="#419-經典智能合約案例-p1">4.1.9 經典智能合約案例 <code>P1</code></a></h3>
+<p>建議三個練習案例：</p>
+<ul>
+<li>紅包合約：多收款人分配</li>
+<li>銀行合約：存取款 + 日誌</li>
+<li>拍賣合約：出價與結算</li>
+</ul>
+<h3 id="4110-智能合約開發技巧-p0"><a class="header" href="#4110-智能合約開發技巧-p0">4.1.10 智能合約開發技巧 <code>P0</code></a></h3>
+<p>高頻最佳實務：</p>
+<ul>
+<li>Checks-Effects-Interactions</li>
+<li>Pull over Push（提款模式）</li>
+<li>權限最小化</li>
+<li>重要參數上鏈事件紀錄</li>
+<li>導入 fuzz/invariant 測試</li>
+</ul>
+<h2 id="42-go-語言與智能合約調用"><a class="header" href="#42-go-語言與智能合約調用">4.2 Go 語言與智能合約調用</a></h2>
+<h3 id="421-合約函數如何被調用-p0"><a class="header" href="#421-合約函數如何被調用-p0">4.2.1 合約函數如何被調用 <code>P0</code></a></h3>
+<p>兩類呼叫：</p>
+<ul>
+<li><code>eth_call</code>：讀取，不上鏈</li>
+<li><code>eth_sendRawTransaction</code>：寫入，上鏈</li>
+</ul>
+<p>Go 典型路徑：</p>
+<ol>
+<li>載入 ABI</li>
+<li>打包 calldata</li>
+<li>建交易</li>
+<li>簽名</li>
+<li>廣播</li>
+</ol>
+<h3 id="422-智能合約被調用的基本步驟-p0"><a class="header" href="#422-智能合約被調用的基本步驟-p0">4.2.2 智能合約被調用的基本步驟 <code>P0</code></a></h3>
+<pre><code class="language-text">Load ABI -&gt; Pack method args -&gt; Build tx -&gt; Sign tx -&gt; Send tx -&gt; Wait receipt
+</code></pre>
+<p>Go 實作骨架：</p>
+<pre><code class="language-go">client, _ := ethclient.Dial(rpcURL)
+nonce, _ := client.PendingNonceAt(ctx, from)
+gasPrice, _ := client.SuggestGasPrice(ctx)
+
+input, _ := abiObj.Pack("transfer", to, amount)
+tx := types.NewTransaction(nonce, contractAddr, big.NewInt(0), gasLimit, gasPrice, input)
+
+signedTx, _ := types.SignTx(tx, types.NewEIP155Signer(chainID), privateKey)
+_ = client.SendTransaction(ctx, signedTx)
+</code></pre>
+<h3 id="423-調用合約時如何簽名-p0"><a class="header" href="#423-調用合約時如何簽名-p0">4.2.3 調用合約時如何簽名 <code>P0</code></a></h3>
+<p>簽名關鍵：</p>
+<ul>
+<li>交易欄位完整（nonce, gas, to, data, chain id）</li>
+<li>選對 signer（EIP-155 / 1559）</li>
+<li>私鑰僅在簽名端使用</li>
+</ul>
+<p>常見坑：</p>
+<ul>
+<li><code>invalid sender</code> 多半是 chain id 或 signer 類型錯</li>
+<li>nonce 重複導致交易取代或失敗</li>
+</ul>
+<h3 id="424-如何訂閱合約的-event-p0"><a class="header" href="#424-如何訂閱合約的-event-p0">4.2.4 如何訂閱合約的 event <code>P0</code></a></h3>
+<p>事件訂閱用途：</p>
+<ul>
+<li>業務狀態同步</li>
+<li>錯誤與風控告警</li>
+<li>對帳</li>
+</ul>
+<p>Go 訂閱骨架：</p>
+<pre><code class="language-go">query := ethereum.FilterQuery{Addresses: []common.Address{contractAddr}}
+logs := make(chan types.Log)
+sub, _ := client.SubscribeFilterLogs(ctx, query, logs)
+
+for {
+    select {
+    case err := &lt;-sub.Err():
+        _ = err
+    case vLog := &lt;-logs:
+        _ = vLog // decode event
+    }
+}
+</code></pre>
+<p>常見坑：</p>
+<ul>
+<li>websocket 斷線沒重連</li>
+<li>只訂閱新事件，漏補歷史區塊</li>
+</ul>
+<h2 id="實訓編寫一個銀行合約-p0"><a class="header" href="#實訓編寫一個銀行合約-p0">實訓：編寫一個銀行合約 <code>P0</code></a></h2>
+<p>功能要求：</p>
+<ul>
+<li><code>deposit()</code></li>
+<li><code>withdraw(amount)</code></li>
+<li><code>balanceOf(user)</code></li>
+<li><code>event Deposited/Withdrawn</code></li>
+</ul>
+<p>工程要求：</p>
+<ul>
+<li>withdraw 使用重入保護</li>
+<li>超額提款需回滾</li>
+<li>Go 客戶端可完成存取款與事件監聽</li>
+</ul>
+<p>驗收清單：</p>
+<ul>
+<li>合約單元測試通過</li>
+<li>Go 調用成功並拿到 receipt</li>
+<li>event 可被訂閱並解析</li>
+</ul>
+<h2 id="本章總結-7"><a class="header" href="#本章總結-7">本章總結</a></h2>
+<p>你已具備：</p>
+<ul>
+<li>Solidity 開發基礎</li>
+<li>Go 調用合約完整鏈路</li>
+<li>交易簽名與 event 訂閱能力</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="第5章-go-語言區塊鏈高級應用開發"><a class="header" href="#第5章-go-語言區塊鏈高級應用開發">第5章 Go 語言區塊鏈高級應用開發</a></h1>
+<p>本章以「做出一條可跑的簡化區塊鏈」為目標，重點在資料結構與交易流程是否自洽。</p>
+<h2 id="51-go-語言與區塊鏈開發準備"><a class="header" href="#51-go-語言與區塊鏈開發準備">5.1 Go 語言與區塊鏈開發準備</a></h2>
+<h3 id="511-go-語言與-hash-函數-p0"><a class="header" href="#511-go-語言與-hash-函數-p0">5.1.1 Go 語言與 hash 函數 <code>P0</code></a></h3>
+<p>常用組件：</p>
+<ul>
+<li><code>crypto/sha256</code></li>
+<li><code>encoding/hex</code></li>
+<li><code>bytes</code></li>
+</ul>
+<p>設計原則：</p>
+<ul>
+<li>區塊、交易都要有穩定序列化</li>
+<li>hash 結果用 <code>[]byte</code> 儲存，顯示時才轉 hex</li>
+</ul>
+<h3 id="512-go-語言與-base58-編碼-p0"><a class="header" href="#512-go-語言與-base58-編碼-p0">5.1.2 Go 語言與 Base58 編碼 <code>P0</code></a></h3>
+<p>Base58 用於人類可讀地址，避免 <code>0/O/I/l</code> 混淆。</p>
+<p>典型地址流程：</p>
+<ol>
+<li>公鑰 hash（<code>SHA256 + RIPEMD160</code>）</li>
+<li>加版本前綴</li>
+<li>加 checksum</li>
+<li>Base58 編碼</li>
+</ol>
+<h3 id="513-go-語言與默克爾樹-p0"><a class="header" href="#513-go-語言與默克爾樹-p0">5.1.3 Go 語言與默克爾樹 <code>P0</code></a></h3>
+<p>Merkle Tree 用於交易集合摘要：</p>
+<ul>
+<li>葉節點：交易 hash</li>
+<li>父節點：<code>hash(left || right)</code></li>
+<li>根節點：區塊 header 的 <code>MerkleRoot</code></li>
+</ul>
+<p>常見坑：</p>
+<ul>
+<li>奇數葉節點時複製最後一個葉節點</li>
+<li>序列化不一致導致根 hash 不一致</li>
+</ul>
+<h3 id="514-go-語言實現-p2p-網絡-p0"><a class="header" href="#514-go-語言實現-p2p-網絡-p0">5.1.4 Go 語言實現 P2P 網絡 <code>P0</code></a></h3>
+<p>最小消息定義建議：</p>
+<ul>
+<li><code>version</code></li>
+<li><code>getblocks</code></li>
+<li><code>inv</code></li>
+<li><code>getdata</code></li>
+<li><code>block</code></li>
+<li><code>tx</code></li>
+</ul>
+<p>工程建議：</p>
+<ul>
+<li>每種消息用獨立 handler</li>
+<li>建立 peer set 與去重 cache</li>
+<li>記錄最後已知區塊高度</li>
+</ul>
+<h2 id="52-go-語言實現-pow-共識算法"><a class="header" href="#52-go-語言實現-pow-共識算法">5.2 Go 語言實現 PoW 共識算法</a></h2>
+<h3 id="521-區塊定義與數據串行化-p0"><a class="header" href="#521-區塊定義與數據串行化-p0">5.2.1 區塊定義與數據串行化 <code>P0</code></a></h3>
+<p>核心結構：</p>
+<pre><code class="language-go">type Block struct {
+    Version    int64
+    PrevHash   []byte
+    MerkleRoot []byte
+    Timestamp  int64
+    Bits       int64
+    Nonce      int64
+    Hash       []byte
+    Txs        []*Transaction
+}
+</code></pre>
+<p>序列化建議：</p>
+<ul>
+<li><code>encoding/gob</code>（教學簡單）或 <code>protobuf</code>（可演進）</li>
+<li>解碼錯誤要立即失敗，不可靜默忽略</li>
+</ul>
+<h3 id="522-pow-算法實現-p0"><a class="header" href="#522-pow-算法實現-p0">5.2.2 PoW 算法實現 <code>P0</code></a></h3>
+<p>流程：</p>
+<ol>
+<li>準備區塊 header bytes</li>
+<li>從 nonce=0 迭代</li>
+<li>計算 hash，與 target 比較</li>
+<li>命中後寫入區塊 <code>Nonce</code> 與 <code>Hash</code></li>
+</ol>
+<pre><code class="language-text">PrepareHeader -&gt; Hash -&gt; CompareTarget -&gt; Success? -&gt; next nonce
+</code></pre>
+<p>驗證函數：</p>
+<ul>
+<li>每個節點收到區塊都必須重算驗證</li>
+<li>不能信任對方提供的 <code>Hash</code> 欄位</li>
+</ul>
+<h2 id="53-區塊數據如何持久化"><a class="header" href="#53-區塊數據如何持久化">5.3 區塊數據如何持久化</a></h2>
+<h3 id="531-go-語言與-boltdb-實戰-p0"><a class="header" href="#531-go-語言與-boltdb-實戰-p0">5.3.1 Go 語言與 boltDB 實戰 <code>P0</code></a></h3>
+<p>BoltDB（bbolt）特性：</p>
+<ul>
+<li>單機嵌入式 KV</li>
+<li>ACID 交易</li>
+<li>讀多寫少場景適合教學鏈</li>
+</ul>
+<p>建議 bucket：</p>
+<ul>
+<li><code>blocks</code>：<code>hash -&gt; block bytes</code></li>
+<li><code>meta</code>：<code>lastHash -&gt; ...</code></li>
+<li><code>utxo</code>：<code>txid:vout -&gt; output</code></li>
+</ul>
+<h3 id="532-區塊數據如何持久化-p0"><a class="header" href="#532-區塊數據如何持久化-p0">5.3.2 區塊數據如何持久化 <code>P0</code></a></h3>
+<p>寫入流程：</p>
+<ol>
+<li>驗證區塊</li>
+<li>寫入 <code>blocks</code></li>
+<li>更新 <code>lastHash</code></li>
+<li>更新 UTXO 索引</li>
+</ol>
+<h3 id="533-區塊數據如何遍歷-p0"><a class="header" href="#533-區塊數據如何遍歷-p0">5.3.3 區塊數據如何遍歷 <code>P0</code></a></h3>
+<p>從 <code>lastHash</code> 反向走 <code>PrevHash</code> 到 genesis：</p>
+<pre><code class="language-text">last -&gt; prev -&gt; prev -&gt; ... -&gt; genesis
+</code></pre>
+<p>常見坑：</p>
+<ul>
+<li>遍歷未處理空 hash 終止條件</li>
+<li>DB 交易未關閉造成資源泄漏</li>
+</ul>
+<h2 id="54-go-語言實現-utxo-模型"><a class="header" href="#54-go-語言實現-utxo-模型">5.4 Go 語言實現 UTXO 模型</a></h2>
+<h3 id="541-如何定義交易-p0"><a class="header" href="#541-如何定義交易-p0">5.4.1 如何定義交易 <code>P0</code></a></h3>
+<pre><code class="language-go">type TXInput struct {
+    Txid      []byte
+    Vout      int
+    Signature []byte
+    PubKey    []byte
+}
+
+type TXOutput struct {
+    Value      int
+    PubKeyHash []byte
+}
+
+type Transaction struct {
+    ID   []byte
+    Vin  []TXInput
+    Vout []TXOutput
+}
+</code></pre>
+<h3 id="542-如何判斷-coinbase-交易-p0"><a class="header" href="#542-如何判斷-coinbase-交易-p0">5.4.2 如何判斷 CoinBase 交易 <code>P0</code></a></h3>
+<p>規則：</p>
+<ul>
+<li><code>len(Vin) == 1</code></li>
+<li><code>Vin[0].Txid == nil</code></li>
+<li><code>Vin[0].Vout == -1</code></li>
+</ul>
+<h3 id="543-如何使用-coinbase-交易-p0"><a class="header" href="#543-如何使用-coinbase-交易-p0">5.4.3 如何使用 CoinBase 交易 <code>P0</code></a></h3>
+<p>CoinBase 用於區塊獎勵，通常每個區塊第一筆交易。</p>
+<p>實作要點：</p>
+<ul>
+<li>獎勵值可參數化</li>
+<li>高度可寫入 <code>scriptSig</code> 或附加欄位</li>
+</ul>
+<h3 id="544-如何查找賬戶的-utxo-p0"><a class="header" href="#544-如何查找賬戶的-utxo-p0">5.4.4 如何查找賬戶的 UTXO <code>P0</code></a></h3>
+<p>流程：</p>
+<ol>
+<li>從 UTXO 集索引查 <code>PubKeyHash</code> 匹配輸出</li>
+<li>累加直到滿足轉帳金額</li>
+<li>回傳可用輸入與總額</li>
+</ol>
+<p>常見坑：</p>
+<ul>
+<li>沒標記已花費輸出，導致雙花</li>
+<li>未處理變更輸出導致餘額錯誤</li>
+</ul>
+<h3 id="545-如何發送交易-p0"><a class="header" href="#545-如何發送交易-p0">5.4.5 如何發送交易 <code>P0</code></a></h3>
+<p>完整流程：</p>
+<ol>
+<li>選 UTXO（coin selection）</li>
+<li>建輸入輸出（含找零）</li>
+<li>對每個輸入簽名</li>
+<li>計算 txid</li>
+<li>廣播到交易池</li>
+</ol>
+<pre><code class="language-text">SelectUTXO -&gt; BuildTx -&gt; SignInputs -&gt; Verify -&gt; Broadcast
+</code></pre>
+<h2 id="55-區塊鏈賬戶地址如何生成"><a class="header" href="#55-區塊鏈賬戶地址如何生成">5.5 區塊鏈賬戶地址如何生成</a></h2>
+<h3 id="551-公鑰加密與數字簽名-p0"><a class="header" href="#551-公鑰加密與數字簽名-p0">5.5.1 公鑰加密與數字簽名 <code>P0</code></a></h3>
+<p>常用曲線：<code>secp256k1</code></p>
+<p>簽名驗證核心：</p>
+<ul>
+<li>私鑰簽</li>
+<li>公鑰驗</li>
+<li>交易內容變動則簽名失效</li>
+</ul>
+<h3 id="552-生成區塊鏈賬戶地址-p0"><a class="header" href="#552-生成區塊鏈賬戶地址-p0">5.5.2 生成區塊鏈賬戶地址 <code>P0</code></a></h3>
+<p>流程：</p>
+<ol>
+<li>生成私鑰</li>
+<li>推導公鑰</li>
+<li>公鑰 hash</li>
+<li>加版本與 checksum</li>
+<li>Base58 編碼</li>
+</ol>
+<p>安全要求：</p>
+<ul>
+<li>私鑰不落盤明文</li>
+<li>助記詞/私鑰分離備份</li>
+</ul>
+<h2 id="實訓結合區塊鏈賬戶地址發送區塊鏈交易-p0"><a class="header" href="#實訓結合區塊鏈賬戶地址發送區塊鏈交易-p0">實訓：結合區塊鏈賬戶地址，發送區塊鏈交易 <code>P0</code></a></h2>
+<p>目標：</p>
+<ul>
+<li>建立兩個地址 A/B</li>
+<li>A 先獲得 coinbase</li>
+<li>A 向 B 轉帳並找零</li>
+<li>打包出塊後驗證餘額</li>
+</ul>
+<p>驗收：</p>
+<ul>
+<li>A/B 餘額符合預期</li>
+<li>交易可驗簽</li>
+<li>UTXO 集狀態正確更新</li>
+</ul>
+<h2 id="本章總結-8"><a class="header" href="#本章總結-8">本章總結</a></h2>
+<p>本章完成後，你已具備：</p>
+<ul>
+<li>一條簡化鏈的核心資料結構</li>
+<li>PoW 出塊與驗證流程</li>
+<li>UTXO 交易與地址生成能力</li>
+<li>DB 持久化與遍歷能力</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="第6章-go-語言離線錢包開發"><a class="header" href="#第6章-go-語言離線錢包開發">第6章 Go 語言離線錢包開發</a></h1>
+<p>本章目標是做出「簽名在離線端、查詢在在線端」的實務錢包架構。</p>
+<h2 id="61-區塊鏈錢包原理"><a class="header" href="#61-區塊鏈錢包原理">6.1 區塊鏈錢包原理</a></h2>
+<h3 id="611-區塊鏈錢包的核心原理-p0"><a class="header" href="#611-區塊鏈錢包的核心原理-p0">6.1.1 區塊鏈錢包的核心原理 <code>P0</code></a></h3>
+<p>錢包不是資產保險箱，而是：</p>
+<ul>
+<li>金鑰管理器</li>
+<li>簽名器</li>
+<li>地址與交易組裝工具</li>
+</ul>
+<p>核心分層：</p>
+<pre><code class="language-text">Key Management -&gt; Tx Builder -&gt; Signer -&gt; Broadcaster -&gt; Index/Query
+</code></pre>
+<p>設計原則：</p>
+<ul>
+<li>私鑰永不出簽名邊界</li>
+<li>查詢與簽名分離</li>
+<li>所有交易可重現與可審計</li>
+</ul>
+<h3 id="612-助記詞如何生成與驗證-p0"><a class="header" href="#612-助記詞如何生成與驗證-p0">6.1.2 助記詞如何生成與驗證 <code>P0</code></a></h3>
+<p>建議標準：</p>
+<ul>
+<li>BIP-39（助記詞）</li>
+<li>BIP-32（HD 主私鑰）</li>
+<li>BIP-44（路徑規範）</li>
+</ul>
+<p>流程：</p>
+<ol>
+<li>生成熵</li>
+<li>轉助記詞</li>
+<li>助記詞 + passphrase 推導 seed</li>
+<li>seed 推導主私鑰與子私鑰</li>
+</ol>
+<p>常見坑：</p>
+<ul>
+<li>未檢查 checksum</li>
+<li>passphrase 遺失造成資產永久不可恢復</li>
+</ul>
+<h3 id="613-如何存儲私鑰-p0"><a class="header" href="#613-如何存儲私鑰-p0">6.1.3 如何存儲私鑰 <code>P0</code></a></h3>
+<p>推薦做法：</p>
+<ul>
+<li>私鑰 at-rest 加密（如 AES-GCM）</li>
+<li>KDF（Argon2/scrypt）保護口令</li>
+<li>記憶體中使用後清理</li>
+<li>備份採多地分片或硬體介質</li>
+</ul>
+<p>禁止做法：</p>
+<ul>
+<li>私鑰明文寫 DB/日誌</li>
+<li>私鑰透過 HTTP 傳輸</li>
+<li>把助記詞截圖存聊天工具</li>
+</ul>
+<h2 id="62-區塊鏈錢包核心功能實現"><a class="header" href="#62-區塊鏈錢包核心功能實現">6.2 區塊鏈錢包核心功能實現</a></h2>
+<h3 id="621-flag-使用與開發框架搭建-p1"><a class="header" href="#621-flag-使用與開發框架搭建-p1">6.2.1 flag 使用與開發框架搭建 <code>P1</code></a></h3>
+<p>CLI 建議命令：</p>
+<ul>
+<li><code>wallet init</code></li>
+<li><code>wallet addr list</code></li>
+<li><code>wallet coin transfer</code></li>
+<li><code>wallet token transfer</code></li>
+<li><code>wallet tx query</code></li>
+</ul>
+<p>目錄建議：</p>
+<ul>
+<li><code>cmd/</code></li>
+<li><code>internal/key</code></li>
+<li><code>internal/tx</code></li>
+<li><code>internal/rpc</code></li>
+<li><code>internal/store</code></li>
+</ul>
+<h3 id="622-錢包如何支持-coin-轉移-p0"><a class="header" href="#622-錢包如何支持-coin-轉移-p0">6.2.2 錢包如何支持 Coin 轉移 <code>P0</code></a></h3>
+<p>UTXO 鏈流程：</p>
+<ol>
+<li>查可用 UTXO</li>
+<li>選擇輸入與找零</li>
+<li>建交易</li>
+<li>離線簽名</li>
+<li>在線廣播</li>
+</ol>
+<p>Account 鏈流程：</p>
+<ol>
+<li>查 nonce 與 gas</li>
+<li>建交易（to/value/data）</li>
+<li>離線簽名</li>
+<li>在線廣播</li>
+</ol>
+<h3 id="623-錢包如何支持-coin-查詢-p0"><a class="header" href="#623-錢包如何支持-coin-查詢-p0">6.2.3 錢包如何支持 Coin 查詢 <code>P0</code></a></h3>
+<p>兩種方式：</p>
+<ul>
+<li>直連節點 RPC</li>
+<li>走索引服務 API</li>
+</ul>
+<p>查詢策略：</p>
+<ul>
+<li>即時餘額（pending + confirmed）</li>
+<li>可花費餘額（按確認數門檻）</li>
+</ul>
+<h3 id="624-erc-20-標準與實現-p0"><a class="header" href="#624-erc-20-標準與實現-p0">6.2.4 ERC-20 標準與實現 <code>P0</code></a></h3>
+<p>必懂函數：</p>
+<ul>
+<li><code>balanceOf</code></li>
+<li><code>transfer</code></li>
+<li><code>approve</code></li>
+<li><code>transferFrom</code></li>
+<li><code>allowance</code></li>
+</ul>
+<p>必懂事件：</p>
+<ul>
+<li><code>Transfer</code></li>
+<li><code>Approval</code></li>
+</ul>
+<p>工程坑點：</p>
+<ul>
+<li>小數位 <code>decimals</code> 處理錯誤</li>
+<li><code>approve</code> 競態（建議先歸零再設新值）</li>
+</ul>
+<h3 id="625-錢包如何支持-token-轉移-p0"><a class="header" href="#625-錢包如何支持-token-轉移-p0">6.2.5 錢包如何支持 token 轉移 <code>P0</code></a></h3>
+<p>流程：</p>
+<ol>
+<li>載入 token ABI</li>
+<li><code>Pack("transfer", to, amount)</code></li>
+<li>建合約交易</li>
+<li>簽名並送出</li>
+<li>根據 receipt 與 event 確認結果</li>
+</ol>
+<h3 id="626-錢包如何支持-token-查詢-p0"><a class="header" href="#626-錢包如何支持-token-查詢-p0">6.2.6 錢包如何支持 token 查詢 <code>P0</code></a></h3>
+<p>查詢項目：</p>
+<ul>
+<li>token 餘額</li>
+<li>allowance</li>
+<li>持倉清單</li>
+</ul>
+<p>工程建議：</p>
+<ul>
+<li>緩存 metadata（symbol/decimals）</li>
+<li>多鏈資產用 <code>chainId + contract + address</code> 當主鍵</li>
+</ul>
+<h3 id="627-交易明細查詢-p0"><a class="header" href="#627-交易明細查詢-p0">6.2.7 交易明細查詢 <code>P0</code></a></h3>
+<p>最小交易明細模型：</p>
+<ul>
+<li><code>txHash</code></li>
+<li><code>from</code>, <code>to</code></li>
+<li><code>value</code> / <code>tokenAmount</code></li>
+<li><code>status</code></li>
+<li><code>blockNumber</code></li>
+<li><code>timestamp</code></li>
+<li><code>fee</code></li>
+</ul>
+<p>狀態機：</p>
+<pre><code class="language-text">created -&gt; signed -&gt; pending -&gt; confirmed -&gt; finalized
+                              -&gt; failed/dropped
+</code></pre>
+<p>常見坑：</p>
+<ul>
+<li>只看 tx 成功，不看 event 是否符合預期</li>
+<li>發生重組時沒有回滾本地狀態</li>
+</ul>
+<h2 id="本章總結-9"><a class="header" href="#本章總結-9">本章總結</a></h2>
+<p>離線錢包工程的底線：</p>
+<ul>
+<li>私鑰隔離</li>
+<li>交易可驗證</li>
+<li>狀態可追蹤</li>
+<li>錯誤可恢復</li>
+</ul>
+<p>做到這四點，才算可上線的錢包系統。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            MathJax.Hub.Register.StartupHook('End', function() {
+                window.setTimeout(window.print, 100);
+            });
+        });
+        </script>
+
+
+    </div>
+    </body>
+</html>

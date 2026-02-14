@@ -1,0 +1,395 @@
+<!DOCTYPE HTML>
+<html lang="zh-TW" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第8章 Solidity智能合約開發進階 - 工程師等級 Web3 系統全圖（完整版）</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">工程師等級 Web3 系統全圖（完整版）</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第8章-solidity智能合約開發進階"><a class="header" href="#第8章-solidity智能合約開發進階">第8章 Solidity智能合約開發進階</a></h1>
+<p>本章目標是把合約能力提升到可上線等級：標準、升級、架構模式、安全最佳實踐與 Python 調用。</p>
+<h2 id="81-solidity經典案例"><a class="header" href="#81-solidity經典案例">8.1 Solidity經典案例</a></h2>
+<h3 id="811-智能合約開發的一般步驟-p1"><a class="header" href="#811-智能合約開發的一般步驟-p1">8.1.1 智能合約開發的一般步驟 <code>P1</code></a></h3>
+<p>通用流程：</p>
+<ol>
+<li>寫規格與狀態機</li>
+<li>先寫測試（unit/fuzz/invariant）</li>
+<li>實作合約</li>
+<li>審計與修補</li>
+<li>部署與監控</li>
+</ol>
+<h3 id="812-土豪發紅包-p2"><a class="header" href="#812-土豪發紅包-p2">8.1.2 土豪發紅包 <code>P2</code></a></h3>
+<p>練習重點：</p>
+<ul>
+<li>批量分發</li>
+<li>名單驗證</li>
+<li>防重複領取</li>
+</ul>
+<h3 id="813-我要開銀行-p1"><a class="header" href="#813-我要開銀行-p1">8.1.3 我要開銀行 <code>P1</code></a></h3>
+<p>練習重點：</p>
+<ul>
+<li>存取款模型</li>
+<li>權限與限額</li>
+<li>事件記錄與對帳</li>
+</ul>
+<h3 id="814-智能拍賣-p1"><a class="header" href="#814-智能拍賣-p1">8.1.4 智能拍賣 <code>P1</code></a></h3>
+<p>練習重點：</p>
+<ul>
+<li>出價排序</li>
+<li>截止時間</li>
+<li>未中標退款安全性</li>
+</ul>
+<h2 id="82-erc標準-p0"><a class="header" href="#82-erc標準-p0">8.2 ERC標準 <code>P0</code></a></h2>
+<h3 id="821-erc概述-p0"><a class="header" href="#821-erc概述-p0">8.2.1 ERC概述 <code>P0</code></a></h3>
+<p>ERC 是互操作標準，讓錢包、交易所、DApp 可以一致整合。</p>
+<h3 id="822-erc-20標準-p0"><a class="header" href="#822-erc-20標準-p0">8.2.2 ERC-20標準 <code>P0</code></a></h3>
+<p>核心函數：</p>
+<ul>
+<li><code>transfer</code></li>
+<li><code>approve</code></li>
+<li><code>transferFrom</code></li>
+<li><code>balanceOf</code></li>
+</ul>
+<p>常見坑：</p>
+<ul>
+<li>allowance 覆蓋競態</li>
+<li>decimals 顯示錯誤</li>
+</ul>
+<h3 id="823-erc-165標準-p0"><a class="header" href="#823-erc-165標準-p0">8.2.3 ERC-165標準 <code>P0</code></a></h3>
+<p>用途：合約能力探測（<code>supportsInterface</code>）。</p>
+<h3 id="824-erc-721nft標準-p1"><a class="header" href="#824-erc-721nft標準-p1">8.2.4 ERC-721（NFT標準） <code>P1</code></a></h3>
+<p>重點：</p>
+<ul>
+<li>單 token 唯一性</li>
+<li>metadata 管理</li>
+<li>批量 mint 與授權策略</li>
+</ul>
+<h2 id="83-可升級合約-p0"><a class="header" href="#83-可升級合約-p0">8.3 可升級合約 <code>P0</code></a></h2>
+<h3 id="831-不可篡改與可升級之間的矛盾-p0"><a class="header" href="#831-不可篡改與可升級之間的矛盾-p0">8.3.1 不可篡改與可升級之間的矛盾 <code>P0</code></a></h3>
+<p>矛盾點：</p>
+<ul>
+<li>不可變保安全與可預期</li>
+<li>可升級保可維護與修復</li>
+</ul>
+<p>平衡做法：</p>
+<ul>
+<li>Proxy + Timelock + 多簽治理</li>
+</ul>
+<h3 id="832-跨合約調用-p0"><a class="header" href="#832-跨合約調用-p0">8.3.2 跨合約調用 <code>P0</code></a></h3>
+<p>跨合約是組合能力來源，也是攻擊面來源。</p>
+<p>要點：</p>
+<ul>
+<li>外部調用前先更新內部狀態</li>
+<li>外部合約回傳值必檢查</li>
+</ul>
+<h3 id="833-透過底層函數呼叫合約-p0"><a class="header" href="#833-透過底層函數呼叫合約-p0">8.3.3 透過底層函數呼叫合約 <code>P0</code></a></h3>
+<p><code>call/delegatecall/staticcall</code> 使用要點：</p>
+<ul>
+<li>僅在必要時用底層調用</li>
+<li>必須檢查 success 與返回資料</li>
+</ul>
+<h3 id="834-主從式可升級合約-p1"><a class="header" href="#834-主從式可升級合約-p1">8.3.4 主—從式可升級合約 <code>P1</code></a></h3>
+<p>主從模式可隔離邏輯與配置，但需清楚權限邊界。</p>
+<h3 id="835-代理程式儲存式可升級合約-p0"><a class="header" href="#835-代理程式儲存式可升級合約-p0">8.3.5 代理程式—儲存式可升級合約 <code>P0</code></a></h3>
+<p>Proxy 模式關鍵：</p>
+<ul>
+<li>storage layout 不可破壞</li>
+<li>initializer 只能執行一次</li>
+<li>升級權限需多簽與延遲</li>
+</ul>
+<h2 id="84-合約開發最佳實踐-p0"><a class="header" href="#84-合約開發最佳實踐-p0">8.4 合約開發最佳實踐 <code>P0</code></a></h2>
+<h3 id="841-最佳實務概述-p0"><a class="header" href="#841-最佳實務概述-p0">8.4.1 最佳實務概述 <code>P0</code></a></h3>
+<ul>
+<li>權限最小化</li>
+<li>事件完整記錄</li>
+<li>失敗可回滾</li>
+<li>測試先行</li>
+</ul>
+<h3 id="842-工廠模式-p1"><a class="header" href="#842-工廠模式-p1">8.4.2 工廠模式 <code>P1</code></a></h3>
+<p>用工廠合約批量部署同類合約，提高一致性。</p>
+<h3 id="843-儲存註冊表模式-p1"><a class="header" href="#843-儲存註冊表模式-p1">8.4.3 儲存註冊表模式 <code>P1</code></a></h3>
+<p>中心註冊表管理版本、地址與參數，利於治理。</p>
+<h3 id="844-遍歷表疊代器-p1"><a class="header" href="#844-遍歷表疊代器-p1">8.4.4 遍歷表疊代器 <code>P1</code></a></h3>
+<p>避免鏈上大迴圈，採分批與游標式遍歷。</p>
+<h3 id="845-避免重入攻擊-p0"><a class="header" href="#845-避免重入攻擊-p0">8.4.5 避免重入攻擊 <code>P0</code></a></h3>
+<p>防禦組合：</p>
+<ul>
+<li>CEI</li>
+<li>reentrancy guard</li>
+<li>pull payment</li>
+</ul>
+<h3 id="846-警惕外部合約調用-p0"><a class="header" href="#846-警惕外部合約調用-p0">8.4.6 警惕外部合約調用 <code>P0</code></a></h3>
+<p>外部調用要當成不可信：</p>
+<ul>
+<li>可能回滾</li>
+<li>可能耗盡 gas</li>
+<li>可能惡意 callback</li>
+</ul>
+<h2 id="85-python與智能合約調用-p0"><a class="header" href="#85-python與智能合約調用-p0">8.5 Python與智能合約調用 <code>P0</code></a></h2>
+<h3 id="851-rpc原理分析-p0"><a class="header" href="#851-rpc原理分析-p0">8.5.1 RPC原理分析 <code>P0</code></a></h3>
+<p>RPC 是節點對外接口，典型方法：</p>
+<ul>
+<li><code>eth_call</code></li>
+<li><code>eth_estimateGas</code></li>
+<li><code>eth_sendRawTransaction</code></li>
+</ul>
+<h3 id="852-python-sdk簡介-p1"><a class="header" href="#852-python-sdk簡介-p1">8.5.2 Python-SDK簡介 <code>P1</code></a></h3>
+<p>常用 <code>web3.py</code>：</p>
+<ul>
+<li>連節點</li>
+<li>載 ABI</li>
+<li>發交易</li>
+<li>查回執</li>
+</ul>
+<h3 id="853-python呼叫智能合約步驟-p0"><a class="header" href="#853-python呼叫智能合約步驟-p0">8.5.3 Python呼叫智能合約步驟 <code>P0</code></a></h3>
+<ol>
+<li>建立 provider</li>
+<li>載入 ABI + address</li>
+<li>建 call/tx</li>
+<li>簽名與發送</li>
+</ol>
+<h3 id="854-節點連接-p0"><a class="header" href="#854-節點連接-p0">8.5.4 節點連接 <code>P0</code></a></h3>
+<p>建議：</p>
+<ul>
+<li>主備 RPC</li>
+<li>請求重試與超時</li>
+<li>連線健康檢查</li>
+</ul>
+<h3 id="855-abi分析與編譯-p0"><a class="header" href="#855-abi分析與編譯-p0">8.5.5 ABI分析與編譯 <code>P0</code></a></h3>
+<p>ABI 是調用契約，版本漂移會導致調用錯誤。</p>
+<h3 id="856-透過python調用智能合約-p0"><a class="header" href="#856-透過python調用智能合約-p0">8.5.6 透過Python調用智能合約 <code>P0</code></a></h3>
+<p>工程要點：</p>
+<ul>
+<li>nonce 競態控制</li>
+<li>gas 估算與上限保護</li>
+<li>交易狀態追蹤（pending -&gt; confirmed）</li>
+</ul>
+<h2 id="本章總結"><a class="header" href="#本章總結">本章總結</a></h2>
+<ul>
+<li>能寫合約不等於能上線，升級治理與安全流程才是核心。</li>
+<li>SDK 調用端同樣是風險面，必須納入測試與監控。</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch07-solidity-intro.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="ch09-python-offline-wallet.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch07-solidity-intro.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="ch09-python-offline-wallet.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

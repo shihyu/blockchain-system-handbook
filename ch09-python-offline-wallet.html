@@ -1,0 +1,380 @@
+<!DOCTYPE HTML>
+<html lang="zh-TW" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第9章 Python語言離線錢包開發 - 工程師等級 Web3 系統全圖（完整版）</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">工程師等級 Web3 系統全圖（完整版）</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第9章-python語言離線錢包開發"><a class="header" href="#第9章-python語言離線錢包開發">第9章 Python語言離線錢包開發</a></h1>
+<p>本章目標是做出安全可用的離線錢包方案：私鑰隔離、交易可驗證、查詢可追蹤。</p>
+<h2 id="91-區塊鏈錢包原理-p0"><a class="header" href="#91-區塊鏈錢包原理-p0">9.1 區塊鏈錢包原理 <code>P0</code></a></h2>
+<h3 id="911-區塊鏈錢包的核心原理-p0"><a class="header" href="#911-區塊鏈錢包的核心原理-p0">9.1.1 區塊鏈錢包的核心原理 <code>P0</code></a></h3>
+<p>錢包本質：</p>
+<ul>
+<li>管理私鑰與地址</li>
+<li>對交易做簽名</li>
+<li>提供查詢與廣播流程</li>
+</ul>
+<p>不是功能：</p>
+<ul>
+<li>鏈上資產保管（資產在鏈上）</li>
+</ul>
+<pre><code class="language-text">Intent -&gt; Build Tx -&gt; Offline Sign -&gt; Online Broadcast -&gt; Track Status
+</code></pre>
+<h3 id="912-助記詞如何產生與驗證-p0"><a class="header" href="#912-助記詞如何產生與驗證-p0">9.1.2 助記詞如何產生與驗證 <code>P0</code></a></h3>
+<p>建議採用：</p>
+<ul>
+<li>BIP-39 助記詞</li>
+<li>BIP-32/44 派生路徑</li>
+</ul>
+<p>安全要點：</p>
+<ul>
+<li>助記詞離線保存</li>
+<li>passphrase 與助記詞分開保管</li>
+<li>驗證 checksum</li>
+</ul>
+<h3 id="913-如何儲存私鑰-p0"><a class="header" href="#913-如何儲存私鑰-p0">9.1.3 如何儲存私鑰 <code>P0</code></a></h3>
+<p>推薦做法：</p>
+<ul>
+<li>keystore 加密（口令 + KDF）</li>
+<li>硬體錢包或 HSM</li>
+<li>交易簽名與網路隔離</li>
+</ul>
+<p>禁忌：</p>
+<ul>
+<li>私鑰明文存檔</li>
+<li>私鑰進日誌</li>
+<li>未授權備份</li>
+</ul>
+<h2 id="92-區塊鏈錢包核心功能實現-p0"><a class="header" href="#92-區塊鏈錢包核心功能實現-p0">9.2 區塊鏈錢包核心功能實現 <code>P0</code></a></h2>
+<h3 id="921-錢包如何支援coin轉移-p0"><a class="header" href="#921-錢包如何支援coin轉移-p0">9.2.1 錢包如何支援Coin轉移 <code>P0</code></a></h3>
+<p>UTXO 鏈：</p>
+<ul>
+<li>選 UTXO</li>
+<li>建 inputs/outputs</li>
+<li>離線簽名</li>
+<li>上線廣播</li>
+</ul>
+<p>Account 鏈：</p>
+<ul>
+<li>查 nonce/gas</li>
+<li>建交易</li>
+<li>離線簽名</li>
+<li>上線廣播</li>
+</ul>
+<h3 id="922-錢包如何支援coin查詢-p0"><a class="header" href="#922-錢包如何支援coin查詢-p0">9.2.2 錢包如何支援Coin查詢 <code>P0</code></a></h3>
+<p>查詢來源：</p>
+<ul>
+<li>節點 RPC</li>
+<li>索引服務</li>
+</ul>
+<p>查詢類型：</p>
+<ul>
+<li>可用餘額</li>
+<li>已確認餘額</li>
+<li>交易歷史</li>
+</ul>
+<h3 id="923-erc-20標準實現與部署-p0"><a class="header" href="#923-erc-20標準實現與部署-p0">9.2.3 ERC-20標準實現與部署 <code>P0</code></a></h3>
+<p>核心：</p>
+<ul>
+<li>實作標準函數與事件</li>
+<li>部署後驗證合約</li>
+<li>配置 token metadata</li>
+</ul>
+<p>部署注意：</p>
+<ul>
+<li>decimals 一次定義</li>
+<li>mint 權限治理（多簽/時鎖）</li>
+</ul>
+<h3 id="924-錢包如何支援token轉移-p0"><a class="header" href="#924-錢包如何支援token轉移-p0">9.2.4 錢包如何支援Token轉移 <code>P0</code></a></h3>
+<p>流程：</p>
+<ol>
+<li>載入 ABI</li>
+<li><code>transfer(to, amount)</code> 打包 data</li>
+<li>建交易並簽名</li>
+<li>發送交易並追 receipt</li>
+</ol>
+<h3 id="925-錢包如何支援token查詢-p0"><a class="header" href="#925-錢包如何支援token查詢-p0">9.2.5 錢包如何支援Token查詢 <code>P0</code></a></h3>
+<p>必要查詢：</p>
+<ul>
+<li><code>balanceOf</code></li>
+<li><code>allowance</code></li>
+<li>Token 清單與價格映射（可選）</li>
+</ul>
+<p>工程要點：</p>
+<ul>
+<li>多鏈多 token 用統一主鍵管理</li>
+<li>對 decimals/symbol 做快取</li>
+</ul>
+<h3 id="926-事件訂閱-p0"><a class="header" href="#926-事件訂閱-p0">9.2.6 事件訂閱 <code>P0</code></a></h3>
+<p>用途：</p>
+<ul>
+<li>實時更新交易狀態</li>
+<li>觸發通知與風控</li>
+<li>事後審計</li>
+</ul>
+<p>訂閱策略：</p>
+<ul>
+<li>websocket 實時訂閱</li>
+<li>定時補塊避免漏事件</li>
+<li>重組時回滾本地狀態</li>
+</ul>
+<h2 id="python-工程實作骨架"><a class="header" href="#python-工程實作骨架">Python 工程實作骨架</a></h2>
+<pre><code class="language-python">from web3 import Web3
+
+w3 = Web3(Web3.HTTPProvider(RPC_URL))
+acct = w3.eth.account.from_key(PRIVATE_KEY)
+
+tx = {
+    "to": to_addr,
+    "value": amount_wei,
+    "nonce": w3.eth.get_transaction_count(acct.address),
+    "gas": 21000,
+    "maxFeePerGas": w3.to_wei("30", "gwei"),
+    "maxPriorityFeePerGas": w3.to_wei("2", "gwei"),
+    "chainId": chain_id,
+}
+
+signed = acct.sign_transaction(tx)
+tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
+</code></pre>
+<h2 id="常見坑與修正"><a class="header" href="#常見坑與修正">常見坑與修正</a></h2>
+<ul>
+<li>nonce 衝突：引入 nonce manager</li>
+<li>gas 估算偏低：加安全係數 + 模擬</li>
+<li>盲簽風險：簽名前展示可讀交易摘要</li>
+<li>事件漏單：補塊掃描 + 去重存儲</li>
+</ul>
+<h2 id="本章總結"><a class="header" href="#本章總結">本章總結</a></h2>
+<p>離線錢包不是功能集合，而是安全流程：</p>
+<ul>
+<li>密鑰隔離</li>
+<li>簽名可信</li>
+<li>交易可追</li>
+<li>事故可回應</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch08-solidity-advanced.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="part-4-go-practice.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch08-solidity-advanced.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="part-4-go-practice.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,389 @@
+<!DOCTYPE HTML>
+<html lang="zh-TW" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第7章 Solidity智能合約開發入門 - 工程師等級 Web3 系統全圖（完整版）</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">工程師等級 Web3 系統全圖（完整版）</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第7章-solidity智能合約開發入門"><a class="header" href="#第7章-solidity智能合約開發入門">第7章 Solidity智能合約開發入門</a></h1>
+<p>本章目標是建立 Solidity 的可開發能力：能正確建模資料、寫安全函數、理解合約互動界面。</p>
+<h2 id="71-智能合約運作原理與環境搭建-p0"><a class="header" href="#71-智能合約運作原理與環境搭建-p0">7.1 智能合約運作原理與環境搭建 <code>P0</code></a></h2>
+<h3 id="711-智能合約的概念-p0"><a class="header" href="#711-智能合約的概念-p0">7.1.1 智能合約的概念 <code>P0</code></a></h3>
+<p>智能合約是「部署在鏈上的程式」，特性：</p>
+<ul>
+<li>可公開驗證</li>
+<li>狀態可追蹤</li>
+<li>結果由共識保證</li>
+</ul>
+<p>工程重點：一旦部署，修改成本很高，設計需先做風險建模。</p>
+<h3 id="712-智能合約的運作機制-p0"><a class="header" href="#712-智能合約的運作機制-p0">7.1.2 智能合約的運作機制 <code>P0</code></a></h3>
+<p>運作流程：</p>
+<ol>
+<li>使用者提交交易</li>
+<li>節點執行 EVM 字節碼</li>
+<li>產生狀態變更與事件</li>
+<li>打包進區塊</li>
+</ol>
+<pre><code class="language-text">Tx -&gt; EVM Execute -&gt; State Change + Event -&gt; Block
+</code></pre>
+<h3 id="713-智能合約運作三要素-p0"><a class="header" href="#713-智能合約運作三要素-p0">7.1.3 智能合約運作三要素 <code>P0</code></a></h3>
+<p>三要素：</p>
+<ul>
+<li><code>State</code>：儲存資料</li>
+<li><code>Function</code>：狀態轉移邏輯</li>
+<li><code>Event</code>：對外通知與索引依據</li>
+</ul>
+<h3 id="714-智能合約開發環境搭建-p0"><a class="header" href="#714-智能合約開發環境搭建-p0">7.1.4 智能合約開發環境搭建 <code>P0</code></a></h3>
+<p>建議環境：</p>
+<ul>
+<li>編譯測試：Foundry/Hardhat</li>
+<li>本地鏈：Anvil</li>
+<li>安全庫：OpenZeppelin</li>
+</ul>
+<p>最小命令流：</p>
+<ul>
+<li>編譯</li>
+<li>測試</li>
+<li>部署</li>
+<li>驗證</li>
+</ul>
+<h3 id="715-remix環境簡介-p1"><a class="header" href="#715-remix環境簡介-p1">7.1.5 Remix環境簡介 <code>P1</code></a></h3>
+<p>Remix 適合：</p>
+<ul>
+<li>快速驗證語法</li>
+<li>教學與原型</li>
+<li>小範例除錯</li>
+</ul>
+<p>不適合：</p>
+<ul>
+<li>團隊協作大專案</li>
+<li>需要完整 CI/CD 的場景</li>
+</ul>
+<h3 id="716-初識solidity-p0"><a class="header" href="#716-初識solidity-p0">7.1.6 初識Solidity <code>P0</code></a></h3>
+<p>第一原則：</p>
+<ul>
+<li>明確版本（<code>pragma solidity ^0.8.x</code>）</li>
+<li>預設安全（溢位保護、嚴格可見性）</li>
+<li>儘量用 custom error</li>
+</ul>
+<h2 id="72-solidity基礎語法-p0"><a class="header" href="#72-solidity基礎語法-p0">7.2 Solidity基礎語法 <code>P0</code></a></h2>
+<h3 id="721-solidity基礎資料類型-p0"><a class="header" href="#721-solidity基礎資料類型-p0">7.2.1 Solidity基礎資料類型 <code>P0</code></a></h3>
+<p>常用型別：</p>
+<ul>
+<li><code>uint256</code>, <code>int256</code></li>
+<li><code>bool</code></li>
+<li><code>address</code></li>
+<li><code>bytes</code>, <code>string</code></li>
+</ul>
+<p>建議：先用 <code>uint256</code>，有明確需求再做壓縮。</p>
+<h3 id="722-函數-p0"><a class="header" href="#722-函數-p0">7.2.2 函數 <code>P0</code></a></h3>
+<p>函數屬性：</p>
+<ul>
+<li>可見性：<code>public/external/internal/private</code></li>
+<li>狀態屬性：<code>view/pure/payable</code></li>
+</ul>
+<p>工程建議：</p>
+<ul>
+<li>對外函數先驗參</li>
+<li>寫操作用 custom error</li>
+</ul>
+<h3 id="723-修飾符-p0"><a class="header" href="#723-修飾符-p0">7.2.3 修飾符 <code>P0</code></a></h3>
+<p>modifier 典型用途：</p>
+<ul>
+<li>權限控制</li>
+<li>防重入</li>
+<li>狀態檢查</li>
+</ul>
+<h3 id="724-內建對象-p1"><a class="header" href="#724-內建對象-p1">7.2.4 內建對象 <code>P1</code></a></h3>
+<p>常用對象：</p>
+<ul>
+<li><code>msg</code>, <code>block</code>, <code>tx</code></li>
+</ul>
+<p>注意：避免使用 <code>tx.origin</code> 做授權。</p>
+<h3 id="725-內建函數-p1"><a class="header" href="#725-內建函數-p1">7.2.5 內建函數 <code>P1</code></a></h3>
+<p>常見內建能力：</p>
+<ul>
+<li><code>keccak256</code></li>
+<li><code>abi.encode/encodePacked</code></li>
+<li><code>ecrecover</code></li>
+</ul>
+<h3 id="726-事務控制-p0"><a class="header" href="#726-事務控制-p0">7.2.6 事務控制 <code>P0</code></a></h3>
+<ul>
+<li><code>require</code>：輸入與條件檢查</li>
+<li><code>revert</code>：主動回滾</li>
+<li><code>assert</code>：不變量檢查</li>
+</ul>
+<h3 id="727-自訂修飾符-p0"><a class="header" href="#727-自訂修飾符-p0">7.2.7 自訂修飾符 <code>P0</code></a></h3>
+<p>建議將通用安全檢查抽象成 modifier，避免漏檢。</p>
+<h2 id="73-複合資料型態與資料結構-p0"><a class="header" href="#73-複合資料型態與資料結構-p0">7.3 複合資料型態與資料結構 <code>P0</code></a></h2>
+<h3 id="731-自訂結構-p0"><a class="header" href="#731-自訂結構-p0">7.3.1 自訂結構 <code>P0</code></a></h3>
+<p>用 <code>struct</code> 建模業務狀態，如帳戶、訂單、提案。</p>
+<h3 id="732-數組和動態數組-p0"><a class="header" href="#732-數組和動態數組-p0">7.3.2 數組和動態數組 <code>P0</code></a></h3>
+<ul>
+<li>固定長度陣列：成本可預期</li>
+<li>動態陣列：彈性高，需留意 gas</li>
+</ul>
+<h3 id="733-映射-p0"><a class="header" href="#733-映射-p0">7.3.3 映射 <code>P0</code></a></h3>
+<p><code>mapping</code> 適合做 key-value 狀態索引。</p>
+<p>注意：mapping 不可直接遍歷，常需外部索引或輔助陣列。</p>
+<h3 id="734-address類型-p0"><a class="header" href="#734-address類型-p0">7.3.4 address類型 <code>P0</code></a></h3>
+<p>address 是權限與資產轉移核心型別。</p>
+<p>常見操作：</p>
+<ul>
+<li><code>address(this)</code></li>
+<li><code>payable(addr).transfer(...)</code></li>
+</ul>
+<h3 id="735-memory與storage-p0"><a class="header" href="#735-memory與storage-p0">7.3.5 memory與storage <code>P0</code></a></h3>
+<ul>
+<li><code>storage</code>：鏈上持久狀態</li>
+<li><code>memory</code>：函數暫存</li>
+</ul>
+<p>常見坑：</p>
+<ul>
+<li>對 storage 引用誤改全局狀態</li>
+<li>未理解 copy/reference 行為</li>
+</ul>
+<h2 id="74-solidity物件導向編程-p0"><a class="header" href="#74-solidity物件導向編程-p0">7.4 Solidity物件導向編程 <code>P0</code></a></h2>
+<h3 id="741-接口-p0"><a class="header" href="#741-接口-p0">7.4.1 接口 <code>P0</code></a></h3>
+<p>interface 用於描述外部合約函數簽名，支援跨合約調用。</p>
+<h3 id="742-函數選擇器與接口id-p0"><a class="header" href="#742-函數選擇器與接口id-p0">7.4.2 函數選擇器與接口ID <code>P0</code></a></h3>
+<ul>
+<li>selector：函數簽名 hash 前 4 bytes</li>
+<li>interface id：常見於 ERC-165 能力探測</li>
+</ul>
+<h3 id="743-library-p1"><a class="header" href="#743-library-p1">7.4.3 library <code>P1</code></a></h3>
+<p>library 適合抽離通用邏輯，提升重用性。</p>
+<h3 id="744-合約繼承-p0"><a class="header" href="#744-合約繼承-p0">7.4.4 合約繼承 <code>P0</code></a></h3>
+<p>繼承可以重用代碼，但要注意線性化與 override 規則。</p>
+<h3 id="745-abstract關鍵字-p1"><a class="header" href="#745-abstract關鍵字-p1">7.4.5 abstract關鍵字 <code>P1</code></a></h3>
+<p>abstract contract 用於定義未完整實作的基底規範。</p>
+<h2 id="本章總結"><a class="header" href="#本章總結">本章總結</a></h2>
+<ul>
+<li>熟悉語法只是起點，關鍵在「狀態建模 + 權限控制 + 錯誤處理」。</li>
+<li>任何可寫狀態的函數都要先做威脅建模。</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="part-3-blockchain-dev.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="ch08-solidity-advanced.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="part-3-blockchain-dev.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="ch08-solidity-advanced.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
